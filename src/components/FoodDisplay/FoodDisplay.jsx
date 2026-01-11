@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { StoreContext } from "../../context/StoreContext";
 import FoodItem from "../FoodItem/FoodItem";
+import { toast } from "react-toastify";
 import './FoodDisplay.css'; // add skeleton styles here
 
 const ITEMS_PER_PAGE = 20;
@@ -20,11 +21,22 @@ const FoodDisplay = ({ category, searchText }) => {
     return () => clearTimeout(timer);
   }, [foodList, category, searchText]);
 
-  const filteredFoodList = foodList.filter(
-    (food) =>
-      (category === "All" || food.category === category) &&
-      food.name.toLowerCase().includes(searchText.toLowerCase())
-  );
+  let filteredFoodList = [];
+  try {
+    if (Array.isArray(foodList)) {
+      filteredFoodList = foodList.filter(
+        (food) =>
+          food &&
+          (category === "All" || food.category === category) &&
+          food.name &&
+          food.name.toLowerCase().includes(searchText.toLowerCase())
+      );
+    }
+  } catch (error) {
+    console.error("Error while reading food list:", error);
+    toast.error("An error occurred while reading the food list.");
+    filteredFoodList = [];
+  }
 
   const totalPages = Math.ceil(filteredFoodList.length / ITEMS_PER_PAGE);
 
