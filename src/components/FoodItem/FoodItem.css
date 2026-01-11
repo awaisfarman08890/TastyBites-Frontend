@@ -1,0 +1,58 @@
+.food-card {
+  max-width: 320px;
+  border-radius: 15px;
+  overflow: hidden;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.food-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+.food-img {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.food-img-link:hover .food-img {
+  transform: scale(1.05);
+}
+
+.btn-tomato {
+  background-color: tomato !important;
+  color: white !important;
+  border: none;
+  transition: background-color 0.3s;
+}
+
+.btn-tomato:hover {
+  background-color: #e55347;
+}
+
+.btn-outline-tomato {
+  border: 1px solid tomato;
+  color: tomato;
+  transition: all 0.3s;
+}
+
+.btn-outline-tomato:hover {
+  background-color: tomato;
+  color: white;
+}
+
+.btn-tomato {
+  background-color: tomato;
+  color: white;
+  border: none;
+  transition: background-color 0.3s, transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-tomato:hover {
+  background-color: #e55347; 
+  transform: scale(1.1);       
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+  text-decoration: none;
+}

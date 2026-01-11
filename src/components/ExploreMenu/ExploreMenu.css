@@ -1,0 +1,105 @@
+.explore-menu {
+  padding: 1rem 0;
+}
+
+.explore-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.explore-subtitle {
+  margin-bottom: 1rem;
+  color: #555;
+}
+
+.scroll-icon {
+  font-size: 1.6rem;
+  color: tomato;
+  cursor: pointer;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.scroll-icon:hover {
+  transform: scale(1.3);
+  color: #ff6347cc;
+}
+
+/* Hide scrollbar */
+.explore-menu-list {
+  padding-bottom: 1rem;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.explore-menu-list::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.explore-menu-list-item {
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  flex: 0 0 auto;
+  text-align: center;
+  position: relative;
+}
+
+.explore-menu-list-item:hover {
+  transform: scale(1.1);
+}
+
+.explore-menu-list-item img {
+  border: 3px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.explore-menu-list-item img.active {
+  border-color: tomato;
+  box-shadow: 0 0 15px rgba(255, 99, 71, 0.5);
+}
+
+.explore-menu-list-item img.hidden {
+  display: none;
+}
+
+.explore-menu-list-item img.visible {
+  display: inline-block;
+}
+
+.explore-menu-list-item p {
+  margin-top: 0.5rem;
+  font-weight: 500;
+  color: #555;
+  transition: color 0.3s ease, font-weight 0.3s ease;
+}
+
+.explore-menu-list-item img.active + p {
+  color: tomato;
+  font-weight: 700;
+}
+
+/* Skeleton Loader */
+.skeleton {
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background: linear-gradient(-90deg, #f0f0f0 0%, #e0e0e0 50%, #f0f0f0 100%);
+  background-size: 400% 400%;
+  animation: skeleton-loading 1.2s ease-in-out infinite;
+  margin: auto;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+hr {
+  margin-top: 1.5rem;
+  border: 0.5px solid #ddd;
+}

@@ -1,0 +1,59 @@
+/* Table content wraps nicely */
+.table td, .table th {
+  word-wrap: break-word;
+  vertical-align: middle;
+  font-size: 0.9rem;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .table th, .table td {
+    padding: 0.4rem;
+    font-size: 0.85rem;
+  }
+
+  .btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+
+
+  h2 {
+    font-size: 1.2rem;
+    text-align: center;
+  }
+}
+
+/* Very small screens - stack table rows */
+@media (max-width: 480px) {
+  .table thead {
+    display: none;
+  }
+
+  .table, .table tbody, .table tr, .table td {
+    display: block;
+    width: 100%;
+  }
+
+  .table tr {
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    border-radius: 5px;
+  }
+
+  .table td {
+    text-align: left;
+    padding: 0.25rem 0.5rem 0.25rem 0.5rem; /* remove 50% padding */
+    position: relative;
+    word-break: break-word; /* ensures long addresses wrap */
+  }
+
+  .table td::before {
+    content: attr(data-label);
+    display: block; /* make label appear on top instead of left */
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+  }
+}

@@ -1,0 +1,88 @@
+.food-details .btn-food {
+  background-color: tomato;
+  border: none;
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.food-details .btn-food:hover {
+  background-color: #ff6347;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 99, 71, 0.4);
+}
+
+.food-details img.card-img-top {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.food-details img.card-img-top:hover {
+  transform: scale(1.05);
+}
+
+.text-tomato {
+  color: tomato;
+  font-weight: 600;
+}
+
+/* SKELETON */
+.yt-thumbnail {
+  width: 100%;
+  height: 300px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #e5e5e5 25%, #f0f0f0 37%, #e5e5e5 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+.yt-line {
+  height: 14px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  background: linear-gradient(90deg, #e5e5e5 25%, #f0f0f0 37%, #e5e5e5 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+.yt-line.long {
+  width: 100%;
+}
+
+.yt-line.short {
+  width: 60%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .food-details h1.display-6 {
+    font-size: 1.75rem;
+  }
+
+  .food-details .lead {
+    font-size: 0.95rem;
+  }
+
+  .food-details .btn-food {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .food-details .d-flex.flex-wrap {
+    flex-direction: column;
+    gap: 10px;
+  }
+}

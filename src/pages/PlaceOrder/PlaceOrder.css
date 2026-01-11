@@ -1,0 +1,61 @@
+/* ===== Skeleton animation ===== */
+.skeleton {
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  display: inline-block;
+  animation: shimmer 1.2s infinite linear;
+  width: 100%;
+  margin-bottom: 10px;
+  min-height: 20px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+
+/* Logo skeleton */
+.skeleton-logo {
+  width: 200px;
+  height: 110px;
+  margin: 0 auto 20px;
+  border-radius: 8px;
+}
+
+/* Form skeletons */
+.skeleton-input {
+  width: 100%;
+  height: 38px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.skeleton-button {
+  width: 100%;
+  height: 45px;
+  border-radius: 6px;
+  margin-top: 20px;
+}
+
+/* Cart skeletons */
+.skeleton-cart-item {
+  width: 100%;
+  height: 50px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.skeleton-badge {
+  width: 40px;
+  height: 20px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+
+/* ===== Mobile adjustments ===== */
+@media (max-width: 768px) {
+  .skeleton-logo { width: 120px; height: 80px; }
+  .skeleton-input { height: 36px; }
+  .skeleton-button { height: 42px; }
+  .skeleton-cart-item { height: 45px; }
+}

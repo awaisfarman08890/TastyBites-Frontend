@@ -1,0 +1,109 @@
+.privacy-wrapper {
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, #fff0f0, #fff8f5);
+  min-height: 100vh;
+}
+
+.privacy-card {
+  max-width: 850px;
+  margin: 0 auto;
+  background-color: #fff;
+  border-left: 10px solid tomato;
+  border-radius: 15px;
+  padding: 2rem 2.5rem;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.title {
+  color: tomato;
+  font-size: 2.2rem;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.subtitle {
+  color: tomato;
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.7rem;
+}
+
+p {
+  font-size: 1rem;
+  color: #333;
+  line-height: 1.6;
+  margin-bottom: 0.9rem;
+}
+
+.info-list {
+  list-style-type: disc;
+  padding-left: 1.3rem;
+  margin-bottom: 0.9rem;
+}
+
+.info-list li {
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: #555;
+}
+
+a {
+  color: tomato;
+  text-decoration: none;
+  font-weight: 600;
+  transition: 0.3s;
+}
+
+a:hover {
+  text-decoration: underline;
+  color: #d94343;
+}
+
+/* Contact button */
+.button-wrapper {
+  text-align: center;
+  margin-top: 1.8rem;
+}
+
+.contact-button {
+  background-color: tomato;
+  color: white;
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 0.6rem 1.8rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.contact-button:hover {
+  background-color: #d94343;
+}
+
+/* Responsive adjustments for small screens */
+@media (max-width: 600px) {
+  .privacy-card {
+    padding: 1.5rem 1.5rem;
+    border-left: 8px solid tomato;
+  }
+
+  .title {
+    font-size: 1.8rem;
+  }
+
+  .subtitle {
+    font-size: 1.2rem;
+  }
+
+  p, .info-list li {
+    font-size: 0.95rem;
+  }
+
+  .contact-button {
+    font-size: 0.95rem;
+    padding: 0.5rem 1.5rem;
+  }
+}

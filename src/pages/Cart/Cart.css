@@ -1,0 +1,117 @@
+/* Cart item image */
+.cart-item img {
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    display: block;
+}
+
+/* Quantity input */
+.quantity-input {
+    width: 100%;
+    max-width: 50px; /* Desktop ke liye fixed width */
+    box-sizing: border-box;
+}
+
+/* Cart summary styling */
+.cart-summary {
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+/* Cart item separator */
+.cart-item hr {
+    margin-top: 10px;
+    height: 2px;
+    background-color: #e2e2e2;
+    border: none;
+}
+
+/* Tomato outline button */
+.btn-tomato-outline {
+    color: tomato !important;
+    border: 1px solid tomato !important;
+    background-color: transparent !important;
+    transition: 0.3s;
+}
+
+.btn-tomato-outline:hover {
+    color: #fff !important;
+    background-color: tomato !important;
+    text-decoration: none;
+    border-color: tomato;
+}
+
+/* ===== Mobile adjustments ===== */
+@media (max-width: 768px) {
+    body, html {
+        overflow-x: hidden; /* Remove horizontal scroll */
+    }
+
+    .cart-item {
+        display: flex;
+        flex-direction: column; /* Stack image and details vertically */
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .cart-item img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .quantity-input {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .cart-summary {
+        padding: 15px;
+    }
+
+    .btn-tomato-outline {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+/* ===== Skeleton Loader ===== */
+.skeleton {
+    display: inline-block;
+    height: 16px;
+    background-color: #e0e0e0;
+    border-radius: 4px;
+    animation: shimmer 1.2s infinite linear;
+    background: linear-gradient(to right, #e0e0e0 0%, #f0f0f0 50%, #e0e0e0 100%);
+    background-size: 200% 100%;
+}
+
+.skeleton-img {
+    width: 100%;
+    height: 80px;
+    border-radius: 8px;
+}
+
+.skeleton-title {
+    width: 70%;
+    height: 20px;
+    margin-bottom: 5px;
+}
+
+.skeleton-text {
+    width: 50%;
+    height: 16px;
+    margin-bottom: 5px;
+}
+
+.skeleton-quantity {
+    width: 60px;
+    height: 30px;
+    border-radius: 5px;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
