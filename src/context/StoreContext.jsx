@@ -5,6 +5,7 @@ import {
   removeQtyFromCart,
   getCartData,
 } from "../service/cartService";
+import { toast } from "react-toastify";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const StoreContext = createContext(null);
@@ -79,7 +80,14 @@ export const StoreContextProvider = ({ children }) => {
   // 🚀 Initial load
   useEffect(() => {
     (async () => {
-      setFoodList(await fetchFoodItems());
+      try {
+        const foodData = await fetchFoodItems();
+        setFoodList(foodData);
+      } catch (error) {
+        console.error("Error fetching food list:", error);
+        toast.error("An error occurred while retrieving the food list.");
+        setFoodList([]);
+      }
 
       const tk = localStorage.getItem("token");
       if (tk) {
