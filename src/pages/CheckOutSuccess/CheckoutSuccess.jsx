@@ -24,14 +24,14 @@ const CheckoutSuccess = () => {
         try {
           // 1️⃣ Verify payment on backend
           await axios.post(
-            "http://localhost:8080/api/orders/verify",
+            "https://tasty-bities-backend-production.up.railway.app/api/orders/verify",
             { stripePaymentIntentId: sessionId },
             { headers: { Authorization: `Bearer ${token}` } }
           );
 
           // 2️⃣ Clear backend cart
           try {
-            await axios.delete("http://localhost:8080/api/cart", {
+            await axios.delete("https://tasty-bities-backend-production.up.railway.app/api/cart", {
               headers: { Authorization: `Bearer ${token}` },
             });
           } catch (cartErr) {
