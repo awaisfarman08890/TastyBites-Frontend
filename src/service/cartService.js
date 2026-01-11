@@ -9,7 +9,8 @@ export const addToCart = async (foodId, token) => {
       { headers: { Authorization: `Bearer ${token}` } }
     );
   } catch (error) {
-    console.error("Error while adding to cart", error);
+    console.error("Error adding food:", error);
+    throw error;
   }
 };
 

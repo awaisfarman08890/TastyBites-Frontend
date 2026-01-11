@@ -26,7 +26,8 @@ export const StoreContextProvider = ({ children }) => {
       try {
         await addToCart(id, token);
       } catch (err) {
-        console.error("Add to cart failed", err);
+        console.error("Error adding food:", err);
+        toast.error("An error occurred while adding food to cart.");
       }
     }
   };
@@ -85,7 +86,7 @@ export const StoreContextProvider = ({ children }) => {
         setFoodList(foodData);
       } catch (error) {
         console.error("Error fetching food list:", error);
-        toast.error("An error occurred while retrieving the food list.");
+        toast.error("Failed to fetch the food list.");
         setFoodList([]);
       }
 
