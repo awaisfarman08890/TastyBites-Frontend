@@ -76,6 +76,7 @@ const PlaceOrder = () => {
   });
 
   const [loading, setLoading] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1200);
@@ -93,6 +94,12 @@ const PlaceOrder = () => {
       toast.error("Cart is empty");
       return;
     }
+    
+    if (checkoutLoading) {
+      return; // Prevent multiple submissions
+    }
+    
+    setCheckoutLoading(true);
 
     const orderData = {
       userAddress: `${data.firstName} ${data.lastName}, ${data.address}, ${data.city}, ${data.state}, ${data.country}, ${data.zip}`,
@@ -118,47 +125,96 @@ const PlaceOrder = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      // Handle different possible response formats from backend
-      // Stripe Checkout Sessions return a 'url' field
-      // Some backends might return 'checkoutUrl' or 'sessionUrl'
-      const checkoutUrl = res.data?.url || 
-                         res.data?.checkoutUrl || 
-                         res.data?.sessionUrl ||
-                         res.data?.checkout_session_url;
+      // Log full response for debugging
+      console.log("Full checkout response:", res);
+      console.log("Response data:", res.data);
+      console.log("Response data type:", typeof res.data);
       
-      console.log("Checkout response:", res.data); // Debug log
+      // Handle different possible response formats from backend
+      // Stripe Checkout Sessions typically return a 'url' field in the session object
+      // Check multiple possible locations and formats
+      let checkoutUrl = null;
+      
+      // Try direct properties first
+      if (res.data?.url) checkoutUrl = res.data.url;
+      else if (res.data?.checkoutUrl) checkoutUrl = res.data.checkoutUrl;
+      else if (res.data?.sessionUrl) checkoutUrl = res.data.sessionUrl;
+      else if (res.data?.checkout_session_url) checkoutUrl = res.data.checkout_session_url;
+      // Check nested objects
+      else if (res.data?.session?.url) checkoutUrl = res.data.session.url;
+      else if (res.data?.checkoutSession?.url) checkoutUrl = res.data.checkoutSession.url;
+      else if (res.data?.data?.url) checkoutUrl = res.data.data.url;
+      // Check if response is a string (some APIs return URL directly)
+      else if (typeof res.data === 'string' && (res.data.startsWith('http://') || res.data.startsWith('https://'))) {
+        checkoutUrl = res.data;
+      }
+      // Legacy: check for clientSecret (though this should be a URL, not a secret)
+      else if (res.data?.clientSecret && (res.data.clientSecret.startsWith('http://') || res.data.clientSecret.startsWith('https://'))) {
+        checkoutUrl = res.data.clientSecret;
+      }
+      
+      console.log("Extracted checkout URL:", checkoutUrl);
       
       if (checkoutUrl) {
         // Check if it's a valid URL (starts with http/https)
         if (checkoutUrl.startsWith('http://') || checkoutUrl.startsWith('https://')) {
           // Valid URL - redirect to Stripe Checkout
+          console.log("Redirecting to checkout URL:", checkoutUrl);
           window.location.href = checkoutUrl;
+          return; // Exit early on success
         } else if (checkoutUrl.startsWith('cs_') || checkoutUrl.startsWith('pi_')) {
           // If it's a Stripe session ID or payment intent ID (not a URL)
           // This shouldn't happen with Checkout Sessions, but handle gracefully
-          toast.error("Invalid checkout URL format received from server.");
+          const errorMsg = "Server returned Stripe ID instead of checkout URL. Please contact support.";
           console.error("Received Stripe ID instead of URL:", checkoutUrl);
           console.error("Full response:", res.data);
+          toast.error(errorMsg);
+          setCheckoutLoading(false);
         } else {
           // Unknown format - log and show error
           console.error("Unknown checkout URL format:", checkoutUrl);
           console.error("Full response:", res.data);
-          toast.error("Invalid checkout URL format. Please contact support.");
+          toast.error("Invalid checkout URL format received from server.");
+          setCheckoutLoading(false);
         }
       } else {
-        // No URL found in response
-        console.error("No checkout URL found in response:", res.data);
-        toast.error("Unable to start checkout. Server did not return a valid checkout URL.");
+        // No URL found in response - show detailed error
+        console.error("No checkout URL found in response");
+        console.error("Response status:", res.status);
+        console.error("Response headers:", res.headers);
+        console.error("Response data:", JSON.stringify(res.data, null, 2));
+        
+        // Show user-friendly error with suggestion
+        const errorDetails = res.data?.message || res.data?.error || "Unknown error";
+        toast.error(`Unable to start checkout: ${errorDetails}. Please try again or contact support.`);
+        setCheckoutLoading(false);
       }
     } catch (err) {
       console.error("Order create error:", err);
-      const errorMessage = err.response?.data?.message || err.message || "Failed to place order";
-      toast.error(errorMessage);
+      console.error("Error response:", err.response);
+      console.error("Error data:", err.response?.data);
+      
+      // Extract error message from different possible locations
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.error || 
+                          err.response?.data?.errorMessage ||
+                          err.message || 
+                          "Failed to place order";
+      
+      toast.error(`Checkout error: ${errorMessage}`);
+      setCheckoutLoading(false);
       
       // Navigate to error page on critical errors
       if (err.response?.status >= 500) {
         setTimeout(() => {
           window.location.href = "/error?type=checkout";
+        }, 2000);
+      } else if (err.response?.status === 403) {
+        toast.error("Access denied. Please check your authentication.");
+      } else if (err.response?.status === 401) {
+        toast.error("Please log in to continue with checkout.");
+        setTimeout(() => {
+          window.location.href = "/login";
         }, 2000);
       }
     }
@@ -291,9 +347,16 @@ const PlaceOrder = () => {
                 <button
                   type="submit"
                   className="btn btn-tt w-100 mb-5"
-                  disabled={cartItems.length === 0}
+                  disabled={cartItems.length === 0 || checkoutLoading}
                 >
-                  Continue to checkout
+                  {checkoutLoading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Processing...
+                    </>
+                  ) : (
+                    "Continue to checkout"
+                  )}
                 </button>
               </form>
             </>
