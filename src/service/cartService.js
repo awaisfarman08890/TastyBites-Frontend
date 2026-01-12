@@ -11,6 +11,14 @@ export const addToCart = async (foodId, token) => {
       throw new Error("Unable to extract user ID from token");
     }
 
+    // Validate that userId is NOT an email (should be ObjectId format)
+    if (userId.includes('@')) {
+      console.error("ERROR: Extracted userId is an email:", userId);
+      throw new Error("Invalid user ID format - received email instead of user ID");
+    }
+
+    console.log("Adding to cart with userId:", userId, "foodId:", foodId);
+    
     await axiosInstance.post(
       "/api/cart",
       { foodId, userId },
@@ -29,6 +37,12 @@ export const removeQtyFromCart = async (foodId, token) => {
     
     if (!userId) {
       throw new Error("Unable to extract user ID from token");
+    }
+
+    // Validate that userId is NOT an email (should be ObjectId format)
+    if (userId.includes('@')) {
+      console.error("ERROR: Extracted userId is an email:", userId);
+      throw new Error("Invalid user ID format - received email instead of user ID");
     }
 
     await axiosInstance.post(

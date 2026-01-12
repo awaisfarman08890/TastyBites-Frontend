@@ -37,15 +37,32 @@ export const getUserIdFromToken = (token) => {
   const decoded = decodeToken(token);
   if (!decoded) return null;
   
-  return (
-    decoded.userId ||
-    decoded.id ||
-    decoded.userId?.toString() ||
-    decoded.user?.id ||
-    decoded.user?._id ||
-    decoded.sub ||
-    null
-  );
+  // Helper to check if a value is an email
+  const isEmail = (value) => {
+    if (!value || typeof value !== 'string') return false;
+    return value.includes('@') && value.includes('.');
+  };
+  
+  // Try to get userId from various possible fields, but exclude email values
+  const possibleValues = [
+    decoded.userId,
+    decoded.id,
+    decoded.userId?.toString(),
+    decoded.user?.id,
+    decoded.user?._id,
+    decoded._id,
+    // Only use sub if it's NOT an email
+    decoded.sub && !isEmail(decoded.sub) ? decoded.sub : null
+  ];
+  
+  // Find the first valid value that is NOT an email
+  for (const value of possibleValues) {
+    if (value && !isEmail(value)) {
+      return String(value);
+    }
+  }
+  
+  return null;
 };
 
 /**
