@@ -117,14 +117,50 @@ const PlaceOrder = () => {
         orderData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if (res.data?.clientSecret) {
-        window.location.assign(res.data.clientSecret);
+      
+      // Handle different possible response formats from backend
+      // Stripe Checkout Sessions return a 'url' field
+      // Some backends might return 'checkoutUrl' or 'sessionUrl'
+      const checkoutUrl = res.data?.url || 
+                         res.data?.checkoutUrl || 
+                         res.data?.sessionUrl ||
+                         res.data?.checkout_session_url;
+      
+      console.log("Checkout response:", res.data); // Debug log
+      
+      if (checkoutUrl) {
+        // Check if it's a valid URL (starts with http/https)
+        if (checkoutUrl.startsWith('http://') || checkoutUrl.startsWith('https://')) {
+          // Valid URL - redirect to Stripe Checkout
+          window.location.href = checkoutUrl;
+        } else if (checkoutUrl.startsWith('cs_') || checkoutUrl.startsWith('pi_')) {
+          // If it's a Stripe session ID or payment intent ID (not a URL)
+          // This shouldn't happen with Checkout Sessions, but handle gracefully
+          toast.error("Invalid checkout URL format received from server.");
+          console.error("Received Stripe ID instead of URL:", checkoutUrl);
+          console.error("Full response:", res.data);
+        } else {
+          // Unknown format - log and show error
+          console.error("Unknown checkout URL format:", checkoutUrl);
+          console.error("Full response:", res.data);
+          toast.error("Invalid checkout URL format. Please contact support.");
+        }
       } else {
-        toast.error("Unable to start checkout");
+        // No URL found in response
+        console.error("No checkout URL found in response:", res.data);
+        toast.error("Unable to start checkout. Server did not return a valid checkout URL.");
       }
     } catch (err) {
       console.error("Order create error:", err);
-      toast.error("Failed to place order");
+      const errorMessage = err.response?.data?.message || err.message || "Failed to place order";
+      toast.error(errorMessage);
+      
+      // Navigate to error page on critical errors
+      if (err.response?.status >= 500) {
+        setTimeout(() => {
+          window.location.href = "/error?type=checkout";
+        }, 2000);
+      }
     }
   };
 
