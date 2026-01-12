@@ -4,6 +4,7 @@ import { calculateCartTotals } from "../../cartUtils/cartUtils";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { assets } from "../../assets/assets";
+import { getUserIdFromToken } from "../../utils/tokenUtils";
 
 const US_STATES = [
   { code: "AL", name: "Alabama" },
@@ -100,7 +101,16 @@ const PlaceOrder = () => {
     
     setCheckoutLoading(true);
 
+    // Extract userId from token to ensure it's explicitly sent
+    const userId = getUserIdFromToken(token);
+    if (!userId) {
+      toast.error("Unable to identify user. Please log in again.");
+      setCheckoutLoading(false);
+      return;
+    }
+
     const orderData = {
+      userId: userId, // Explicitly send userId to ensure backend uses it
       userAddress: `${data.firstName} ${data.lastName}, ${data.address}, ${data.city}, ${data.state}, ${data.country}, ${data.zip}`,
       phoneNumber: data.phoneNumber,
       orderedItems: cartItems.map((item) => ({
