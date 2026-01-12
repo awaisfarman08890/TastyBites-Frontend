@@ -59,11 +59,22 @@ const MyOrders = () => {
         }
         
         // Get userId from token if not already set
+        // Backend stores userId as MongoDB ObjectId string (e.g., "696530195d8ee76c0ed510e3")
         if (!userId) {
-          userId = decoded.userId || decoded.id || decoded.user?.id || decoded.sub;
+          userId = decoded.userId || 
+                   decoded.id || 
+                   decoded.userId?.toString() ||
+                   decoded.user?.id || 
+                   decoded.user?._id ||
+                   decoded.sub;
           if (userId) {
-            localStorage.setItem("userId", userId);
+            // Store as string to match database format
+            localStorage.setItem("userId", String(userId));
+            console.log("Stored userId from token:", String(userId));
           }
+        } else {
+          // Ensure userId is a string to match database format
+          userId = String(userId);
         }
       } catch (e) {
         console.log("Could not extract info from token:", e);
@@ -108,26 +119,26 @@ const MyOrders = () => {
       }
       
       // Filter orders - PRIORITY: Match by userId first (from JWT token), then email as fallback
-      // The backend should store userId when creating orders from the JWT token
+      // Show ALL orders for the user (PENDING, PAID, CREATED, etc.) - don't filter by paymentStatus
       const userOrders = allOrders.filter(order => {
-        // Get userId from order (primary identifier - backend extracts from JWT token)
+        // Get userId from order (primary identifier - backend stores as string ObjectId)
         const orderUserId = order.userId || 
                            order.user?.id || 
                            order.user?._id ||
-                           order.userId?.toString() ||
                            String(order.userId || '').trim();
         
         // Get email from order (fallback identifier - from checkout form)
         const orderEmail = (order.email || order.userEmail || order.user?.email || '').trim().toLowerCase();
         
-        // Normalize our identifiers
+        // Normalize our identifiers - handle both string and ObjectId formats
         const normalizedUserId = (userId || '').toString().trim();
         const normalizedUserEmail = (userEmail || '').toLowerCase().trim();
         
-        // PRIMARY: Match by userId (this is the correct way - backend stores userId from token)
+        // PRIMARY: Match by userId (exact string match - backend stores as string ObjectId like "696530195d8ee76c0ed510e3")
         const userIdMatch = normalizedUserId && orderUserId && (
           String(orderUserId).trim() === String(normalizedUserId).trim() ||
-          orderUserId.toString() === normalizedUserId.toString()
+          orderUserId.toString() === normalizedUserId.toString() ||
+          String(orderUserId).replace(/['"]/g, '') === String(normalizedUserId).replace(/['"]/g, '')
         );
         
         // SECONDARY: Match by email (fallback if userId not available)
@@ -137,13 +148,15 @@ const MyOrders = () => {
         // Log matches for debugging
         if (userIdMatch || emailMatch) {
           console.log("✅ MATCHED ORDER:", {
-            orderId: order.id,
+            orderId: order.id || order._id,
             orderUserId,
             ourUserId: normalizedUserId,
             userIdMatch,
             orderEmail,
             ourEmail: normalizedUserEmail,
-            emailMatch
+            emailMatch,
+            paymentStatus: order.paymentStatus,
+            orderStatus: order.orderStatus
           });
         }
         
@@ -276,7 +289,15 @@ const MyOrders = () => {
                     </div>
                   </td>
                   <td className="fw-bold">{order.orderStatus}</td>
-                  <td className="fw-bold text-success">{order.paymentStatus}</td>
+                  <td>
+                    <span className={`badge ${
+                      order.paymentStatus === "PAID" ? "bg-success" :
+                      order.paymentStatus === "PENDING" ? "bg-warning text-dark" :
+                      "bg-secondary"
+                    }`}>
+                      {order.paymentStatus || "UNKNOWN"}
+                    </span>
+                  </td>
                   <td>
                     <button
                       className="btn btn-sm btn-tt"
