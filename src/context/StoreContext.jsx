@@ -1,21 +1,18 @@
 import { createContext, useEffect, useState } from "react";
 import { fetchFoodItems } from "../service/foodService";
-import {
-  addToCart,
-  removeQtyFromCart,
-  getCartData,
-} from "../service/cartService";
+import { addToCart, removeQtyFromCart, getCartData } from "../service/cartService";
 import { toast } from "react-toastify";
 
-// eslint-disable-next-line react-refresh/only-export-components
+// Create context
 export const StoreContext = createContext(null);
 
 export const StoreContextProvider = ({ children }) => {
   const [foodList, setFoodList] = useState([]);
   const [quantities, setQuantities] = useState({});
   const [token, setToken] = useState("");
+  const [loadingFood, setLoadingFood] = useState(true); // Loading state
 
-  // ➕ increase qty
+  // Increase quantity
   const increaseQuantity = async (id) => {
     setQuantities((prev) => ({
       ...prev,
@@ -26,13 +23,13 @@ export const StoreContextProvider = ({ children }) => {
       try {
         await addToCart(id, token);
       } catch (err) {
-        console.error("Error adding food:", err);
+        console.error("Error adding food:", err.response || err);
         toast.error("An error occurred while adding food to cart.");
       }
     }
   };
 
-  // ➖ decrease qty (1 step)
+  //  Decrease quantity
   const decreaseQuantity = async (id) => {
     setQuantities((prev) => {
       const updated = { ...prev };
@@ -45,51 +42,59 @@ export const StoreContextProvider = ({ children }) => {
       try {
         await removeQtyFromCart(id, token);
       } catch (err) {
-        console.error("Decrease qty failed", err);
+        console.error("Decrease qty failed:", err.response || err);
+        toast.error("Failed to decrease quantity in cart.");
       }
     }
   };
 
-  // 🗑️ REMOVE item completely
+  //  Remove item completely
   const removeFromCart = async (foodId) => {
     if (!token) return;
 
     try {
       await removeQtyFromCart(foodId, token);
-
       setQuantities((prev) => {
         const updated = { ...prev };
         delete updated[foodId];
         return updated;
       });
-    } catch (error) {
-      console.error("Remove from cart failed", error);
+    } catch (err) {
+      console.error("Remove from cart failed:", err.response || err);
+      toast.error("Failed to remove item from cart.");
     }
   };
 
-  // 🔄 Load cart from backend
+  //  Load cart from backend
   const loadCartData = async (tk) => {
     try {
       const items = await getCartData(tk);
-      setQuantities(items);
+      setQuantities(items || {});
     } catch (err) {
-      console.error("Cart load failed:", err);
+      console.error("Cart load failed:", err.response || err);
       setQuantities({});
+      toast.error("Failed to load cart data.");
     }
   };
 
-  // 🚀 Initial load
+  //  Initial load
   useEffect(() => {
     (async () => {
+      setLoadingFood(true);
       try {
+        // Fetch food list
         const foodData = await fetchFoodItems();
-        setFoodList(foodData);
+        console.log("Fetched food data:", foodData);
+        setFoodList(Array.isArray(foodData) ? foodData : []);
       } catch (error) {
-        console.error("Error fetching food list:", error);
+        console.error("Error fetching food list:", error.response || error);
         toast.error("Failed to fetch the food list.");
         setFoodList([]);
+      } finally {
+        setLoadingFood(false);
       }
 
+      // Load token and cart
       const tk = localStorage.getItem("token");
       if (tk) {
         setToken(tk);
@@ -105,11 +110,12 @@ export const StoreContextProvider = ({ children }) => {
         quantities,
         increaseQuantity,
         decreaseQuantity,
-        removeFromCart, // ✅ IMPORTANT
+        removeFromCart,
         token,
         setToken,
         setQuantities,
         loadCartData,
+        loadingFood, 
       }}
     >
       {children}
