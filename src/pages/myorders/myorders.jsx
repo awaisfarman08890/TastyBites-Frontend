@@ -107,25 +107,47 @@ const MyOrders = () => {
         console.log("All fields in first order:", Object.keys(allOrders[0]));
       }
       
-      // Filter orders - Match by email from order (orders use email field from checkout form)
-      // The order email comes from the checkout form, which might differ from login email
+      // Filter orders - PRIORITY: Match by userId first (from JWT token), then email as fallback
+      // The backend should store userId when creating orders from the JWT token
       const userOrders = allOrders.filter(order => {
-        // Get email from order (this is what was entered in checkout form)
+        // Get userId from order (primary identifier - backend extracts from JWT token)
+        const orderUserId = order.userId || 
+                           order.user?.id || 
+                           order.user?._id ||
+                           order.userId?.toString() ||
+                           String(order.userId || '').trim();
+        
+        // Get email from order (fallback identifier - from checkout form)
         const orderEmail = (order.email || order.userEmail || order.user?.email || '').trim().toLowerCase();
         
-        // Normalize user email for comparison
+        // Normalize our identifiers
+        const normalizedUserId = (userId || '').toString().trim();
         const normalizedUserEmail = (userEmail || '').toLowerCase().trim();
         
-        // Match by email (case-insensitive, trimmed)
-        // This matches orders placed with the logged-in user's email OR the email from checkout
-        const emailMatch = normalizedUserEmail && orderEmail && orderEmail === normalizedUserEmail;
+        // PRIMARY: Match by userId (this is the correct way - backend stores userId from token)
+        const userIdMatch = normalizedUserId && orderUserId && (
+          String(orderUserId).trim() === String(normalizedUserId).trim() ||
+          orderUserId.toString() === normalizedUserId.toString()
+        );
         
-        // Also check if userId matches (if orders have userId field)
-        const orderUserId = (order.userId || order.user?.id || order.user?._id || '').toString().trim();
-        const normalizedUserId = (userId || '').toString().trim();
-        const userIdMatch = normalizedUserId && orderUserId && orderUserId === normalizedUserId;
+        // SECONDARY: Match by email (fallback if userId not available)
+        const emailMatch = normalizedUserEmail && orderEmail && 
+                          orderEmail === normalizedUserEmail;
         
-        return emailMatch || userIdMatch;
+        // Log matches for debugging
+        if (userIdMatch || emailMatch) {
+          console.log("✅ MATCHED ORDER:", {
+            orderId: order.id,
+            orderUserId,
+            ourUserId: normalizedUserId,
+            userIdMatch,
+            orderEmail,
+            ourEmail: normalizedUserEmail,
+            emailMatch
+          });
+        }
+        
+        return userIdMatch || emailMatch;
       });
       
       console.log(`=== RESULTS ===`);
@@ -134,18 +156,14 @@ const MyOrders = () => {
       
       if (userOrders.length === 0 && allOrders.length > 0) {
         console.error("⚠️ NO ORDERS MATCHED!");
+        console.error("Your userId:", userId);
         console.error("Your email:", userEmail);
-        console.error("Sample order emails:", allOrders.slice(0, 5).map(o => o.email || o.userEmail));
+        console.error("Sample order userIds:", allOrders.slice(0, 5).map(o => o.userId || o.user?.id || o.user?._id || "N/A"));
+        console.error("Sample order emails:", allOrders.slice(0, 5).map(o => o.email || o.userEmail || "N/A"));
         
-        // Check if any orders have matching email (case variations)
-        const possibleMatches = allOrders.filter(o => {
-          const oEmail = (o.email || o.userEmail || '').toLowerCase();
-          const uEmail = (userEmail || '').toLowerCase();
-          return oEmail && uEmail && oEmail.includes(uEmail.split('@')[0]);
-        });
-        
-        if (possibleMatches.length > 0) {
-          console.log("Found potential matches with similar emails:", possibleMatches.map(o => o.email));
+        // Show first order structure for debugging
+        if (allOrders[0]) {
+          console.error("First order full structure:", JSON.stringify(allOrders[0], null, 2));
         }
       }
       
