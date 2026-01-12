@@ -1,17 +1,27 @@
 import axiosInstance from "./axiosInstance";
 
-// pending orders lana
+// Fetch pending orders
 export const fetchPendingOrders = async (userId) => {
-  const res = await axiosInstance.get(
-    `/api/orders/pending?userId=${userId}`
-  );
-  return res.data;
+  try {
+    const res = await axiosInstance.get(
+      `/api/orders/pending?userId=${userId}`
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching pending orders:", error);
+    throw error;
+  }
 };
 
-// payment retry karna
+// Retry payment for a pending order
 export const retryPayment = async (orderId) => {
-  const res = await axiosInstance.patch(
-    `/api/orders/retry-payment/${orderId}`
-  );
-  return res.data;
+  try {
+    const res = await axiosInstance.patch(
+      `/api/orders/retry-payment/${orderId}`
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Error retrying payment:", error);
+    throw error;
+  }
 };
