@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { StoreContext } from "../../context/StoreContext";
 import axios from "axios";
+import axiosInstance from "../../service/axiosInstance";
 import { assets } from "../../assets/assets";
 import "./myorders.css";
 
@@ -10,93 +11,168 @@ const MyOrders = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Helper function to extract userId from JWT token
+  const getUserIdFromToken = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      const decoded = JSON.parse(jsonPayload);
+      return decoded.userId || decoded.id || decoded.user?.id || decoded.sub;
+    } catch (e) {
+      console.error("Error decoding token:", e);
+      return null;
+    }
+  };
+
   const fetchOrders = async () => {
     if (!token) {
       console.log("No token available");
+      setError("Please log in to view your orders");
       return;
     }
     
     try {
       setLoading(true);
-      const userId = localStorage.getItem("userId");
+      setError(null);
       
-      console.log("Fetching orders with userId:", userId);
-      console.log("Token available:", !!token);
-      
+      // Get userId from localStorage or decode from token
+      let userId = localStorage.getItem("userId");
       if (!userId) {
-        console.error("Missing userId in localStorage; cannot fetch orders.");
-        console.log("Available localStorage keys:", Object.keys(localStorage));
-        setOrders([]);
-        return;
-      }
-      
-      // Try multiple API endpoints to find the correct one
-      let res;
-      try {
-        // First try: userId query parameter
-        res = await axios.get(
-          `https://tasty-bities-backend-production.up.railway.app/api/orders?userId=${userId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        console.log("API Response (userId query):", res.data);
-      } catch (err1) {
-        console.log("First endpoint failed, trying alternative...");
-        try {
-          // Second try: user-specific endpoint
-          res = await axios.get(
-            `https://tasty-bities-backend-production.up.railway.app/api/orders/user/${userId}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          console.log("API Response (user endpoint):", res.data);
-        } catch (err2) {
-          // Third try: get all and filter client-side
-          console.log("Trying to fetch all orders and filter...");
-          res = await axios.get(
-            `https://tasty-bities-backend-production.up.railway.app/api/orders/all`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          console.log("API Response (all orders):", res.data);
-          
-          // Filter orders by userId client-side
-          if (Array.isArray(res.data)) {
-            const userOrders = res.data.filter(order => 
-              order.userId === userId || 
-              order.user?.id === userId || 
-              order.user?._id === userId ||
-              order.userId?.toString() === userId ||
-              order.user?.id?.toString() === userId
-            );
-            console.log("Filtered user orders:", userOrders);
-            setOrders(userOrders);
-            return;
-          }
+        userId = getUserIdFromToken(token);
+        if (userId) {
+          localStorage.setItem("userId", userId);
+          console.log("Extracted userId from token:", userId);
         }
       }
       
-      // Handle different response formats
+      console.log("Fetching orders with token...");
+      console.log("UserId:", userId);
+      
+      // The backend likely extracts user from JWT token, so try token-based endpoints first
+      let res;
       let data = [];
-      if (Array.isArray(res.data)) {
-        data = res.data;
-      } else if (res.data?.data && Array.isArray(res.data.data)) {
-        data = res.data.data;
-      } else if (res.data?.orders && Array.isArray(res.data.orders)) {
-        data = res.data.orders;
-      } else if (res.data?.result && Array.isArray(res.data.result)) {
-        data = res.data.result;
+      
+      try {
+        // First try: Token-based endpoint (backend extracts user from token)
+        // Use axiosInstance which automatically includes the token
+        res = await axiosInstance.get(`/api/orders`);
+        console.log("API Response (token-based):", res.data);
+        
+        // Handle response
+        if (Array.isArray(res.data)) {
+          data = res.data;
+        } else if (res.data?.data && Array.isArray(res.data.data)) {
+          data = res.data.data;
+        } else if (res.data?.orders && Array.isArray(res.data.orders)) {
+          data = res.data.orders;
+        }
+        
+        if (data.length > 0) {
+          console.log("Successfully fetched orders via token:", data.length);
+          setOrders(data);
+          return;
+        }
+      } catch (err1) {
+        console.log("Token-based endpoint failed, trying alternatives...", err1.response?.status);
+      }
+      
+      // Second try: Get all orders and filter by userId from token
+      try {
+        const userId = localStorage.getItem("userId");
+        console.log("Trying to fetch all orders and filter by userId:", userId);
+        
+        res = await axiosInstance.get(`/api/orders/all`);
+        console.log("All orders response:", res.data);
+        
+        if (Array.isArray(res.data)) {
+          console.log("Total orders from backend:", res.data.length);
+          console.log("Sample order structure:", res.data[0]);
+          
+          // Filter orders - check multiple possible userId fields
+          const userOrders = res.data.filter(order => {
+            if (!userId) {
+              console.log("No userId available for filtering");
+              return false;
+            }
+            
+            // Check various userId field formats
+            const orderUserId = order.userId || 
+                               order.userId?.toString() ||
+                               order.user?.id || 
+                               order.user?._id ||
+                               order.user?.id?.toString() ||
+                               order.user?._id?.toString();
+            
+            // Also check email if userId doesn't match
+            const userEmail = localStorage.getItem("userEmail");
+            const orderEmail = order.email || order.user?.email;
+            
+            const userIdMatch = orderUserId && orderUserId.toString() === userId.toString();
+            const emailMatch = userEmail && orderEmail && orderEmail.toLowerCase() === userEmail.toLowerCase();
+            
+            if (userIdMatch || emailMatch) {
+              console.log("Matched order:", order.id, {
+                orderUserId,
+                userId,
+                userIdMatch,
+                orderEmail,
+                userEmail,
+                emailMatch
+              });
+              return true;
+            }
+            
+            return false;
+          });
+          
+          console.log(`Filtered ${userOrders.length} orders from ${res.data.length} total orders`);
+          
+          if (userOrders.length === 0 && res.data.length > 0) {
+            console.warn("No orders matched! Sample order fields:", {
+              firstOrder: res.data[0],
+              userId: userId,
+              availableFields: Object.keys(res.data[0] || {})
+            });
+          }
+          
+          setOrders(userOrders);
+          return;
+        }
+      } catch (err2) {
+        console.log("Fetching all orders failed:", err2.response?.status);
+      }
+      
+      // Third try: userId query parameter (fallback)
+      try {
+        const userId = localStorage.getItem("userId");
+        if (userId) {
+          console.log("Trying userId query parameter:", userId);
+          res = await axiosInstance.get(`/api/orders?userId=${userId}`);
+          console.log("API Response (userId query):", res.data);
+          
+          if (Array.isArray(res.data)) {
+            data = res.data;
+          } else if (res.data?.data && Array.isArray(res.data.data)) {
+            data = res.data.data;
+          }
+        }
+      } catch (err3) {
+        console.log("UserId query parameter failed:", err3.response?.status);
       }
       
       console.log("Final orders data:", data);
       console.log("Number of orders:", data.length);
       
       if (data.length === 0) {
-        console.warn("No orders found. This could mean:");
-        console.warn("1. The user hasn't placed any orders");
-        console.warn("2. The userId doesn't match the orders in the database");
-        console.warn("3. The API endpoint is not returning user orders correctly");
+        console.warn("No orders found after trying all methods");
+        console.warn("Available localStorage userId:", localStorage.getItem("userId"));
+        console.warn("Token exists:", !!token);
       }
       
       setOrders(data);
-      setError(null);
     } catch (err) {
       console.error("Error fetching orders:", err);
       console.error("Error response:", err.response?.data);
