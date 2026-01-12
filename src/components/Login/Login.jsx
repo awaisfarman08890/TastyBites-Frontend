@@ -42,6 +42,16 @@ const Login = () => {
           localStorage.setItem("userId", userId);
         }
 
+        // Persist user email for order matching
+        const userEmail = 
+          response.email ||
+          response.userEmail ||
+          response.user?.email ||
+          data.email; // Use login email as fallback
+        if (userEmail) {
+          localStorage.setItem("userEmail", userEmail);
+        }
+
         setToken(response.token);
 
         await loadCartData(response.token);

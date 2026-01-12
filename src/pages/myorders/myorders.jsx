@@ -40,18 +40,11 @@ const MyOrders = () => {
       setLoading(true);
       setError(null);
       
-      // Get userId from localStorage or decode from token
+      // Get user email from multiple sources for matching
+      let userEmail = localStorage.getItem("userEmail");
       let userId = localStorage.getItem("userId");
-      if (!userId) {
-        userId = getUserIdFromToken(token);
-        if (userId) {
-          localStorage.setItem("userId", userId);
-          console.log("Extracted userId from token:", userId);
-        }
-      }
       
-      // Also get user email from token for matching
-      let userEmail = null;
+      // Decode token to get email and userId
       try {
         const base64Url = token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -59,12 +52,38 @@ const MyOrders = () => {
           return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''));
         const decoded = JSON.parse(jsonPayload);
-        userEmail = decoded.email || decoded.userEmail;
-        if (userEmail) {
+        
+        // Get email from token
+        const tokenEmail = decoded.email || decoded.userEmail || decoded.sub;
+        if (tokenEmail && !userEmail) {
+          userEmail = tokenEmail;
           localStorage.setItem("userEmail", userEmail);
         }
+        
+        // Get userId from token if not already set
+        if (!userId) {
+          userId = decoded.userId || decoded.id || decoded.user?.id || decoded.sub;
+          if (userId) {
+            localStorage.setItem("userId", userId);
+          }
+        }
       } catch (e) {
-        console.log("Could not extract email from token");
+        console.log("Could not extract info from token:", e);
+      }
+      
+      // If userId looks like an email, use it as email too (some backends store email as userId)
+      if (userId && userId.includes('@')) {
+        if (!userEmail) {
+          userEmail = userId;
+          localStorage.setItem("userEmail", userEmail);
+        }
+        // Also treat it as a potential email for matching
+        console.log("UserId appears to be an email, using for matching:", userId);
+      }
+      
+      // Final fallback: use the login email from the form if available
+      if (!userEmail && userId && userId.includes('@')) {
+        userEmail = userId;
       }
       
       console.log("=== FETCHING ORDERS ===");
@@ -90,63 +109,50 @@ const MyOrders = () => {
         console.log("All fields in first order:", Object.keys(allOrders[0]));
       }
       
-      // Filter orders - be VERY flexible with matching
+      // Filter orders - PRIMARY MATCH BY EMAIL (since orders use email field)
       const userOrders = allOrders.filter(order => {
-        // Get all possible userId values from order
+        // Get email from order (this is the primary identifier based on debug data)
+        const orderEmail = order.email || 
+                          order.userEmail ||
+                          order.user?.email ||
+                          String(order.email || '').trim().toLowerCase();
+        
+        // Get userId from order (secondary check)
         const orderUserId = order.userId || 
                            order.userId?.toString() ||
                            order.user?.id || 
                            order.user?._id ||
-                           order.user?.id?.toString() ||
-                           order.user?._id?.toString() ||
-                           order.userId?.valueOf?.() ||
-                           String(order.userId || '');
+                           String(order.userId || '').trim();
         
-        // Get all possible email values from order
-        const orderEmail = order.email || 
-                          order.userEmail ||
-                          order.user?.email ||
-                          order.userEmail?.toLowerCase?.() ||
-                          String(order.email || '');
+        // Normalize emails for comparison
+        const normalizedOrderEmail = orderEmail.toLowerCase().trim();
+        const normalizedUserEmail = userEmail ? userEmail.toLowerCase().trim() : '';
         
-        // Match by userId (string or number comparison)
+        // PRIMARY: Match by email (case-insensitive, trimmed)
+        const emailMatch = normalizedUserEmail && normalizedOrderEmail && 
+                          normalizedOrderEmail === normalizedUserEmail;
+        
+        // SECONDARY: Match by userId (if available)
         const userIdMatch = userId && orderUserId && (
-          String(orderUserId) === String(userId) ||
-          Number(orderUserId) === Number(userId) ||
-          orderUserId.toString() === userId.toString()
-        );
-        
-        // Match by email (case-insensitive)
-        const emailMatch = userEmail && orderEmail && (
-          String(orderEmail).toLowerCase() === String(userEmail).toLowerCase()
+          String(orderUserId).trim() === String(userId).trim() ||
+          Number(orderUserId) === Number(userId)
         );
         
         // If we have a match, log it
-        if (userIdMatch || emailMatch) {
+        if (emailMatch || userIdMatch) {
           console.log("✅ MATCHED ORDER:", {
             orderId: order.id,
+            orderEmail: normalizedOrderEmail,
+            userEmail: normalizedUserEmail,
+            emailMatch,
             orderUserId,
             userId,
             userIdMatch,
-            orderEmail,
-            userEmail,
-            emailMatch,
             orderAmount: order.amount,
             orderStatus: order.orderStatus,
             paymentStatus: order.paymentStatus
           });
           return true;
-        }
-        
-        // Log non-matching orders for debugging
-        if (allOrders.length <= 5) {
-          console.log("❌ NOT MATCHED:", {
-            orderId: order.id,
-            orderUserId,
-            userId,
-            orderEmail,
-            userEmail
-          });
         }
         
         return false;
@@ -312,7 +318,10 @@ const MyOrders = () => {
               <h5>Debug Mode: All Orders in Database ({allOrdersDebug.length})</h5>
               <p className="mb-2">
                 <strong>Your userId:</strong> {localStorage.getItem("userId") || "Not found"} | 
-                <strong> Your email:</strong> {localStorage.getItem("userEmail") || "Not found"}
+                <strong> Your email:</strong> {localStorage.getItem("userEmail") || localStorage.getItem("userId") || "Not found"}
+              </p>
+              <p className="mb-2 text-warning">
+                <strong>Note:</strong> Orders are matched by email. Make sure your logged-in email matches the email used when placing orders.
               </p>
               <button 
                 className="btn btn-sm btn-secondary" 
