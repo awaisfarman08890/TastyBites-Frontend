@@ -66,7 +66,6 @@ const PlaceOrder = () => {
   const [data, setData] = useState({
     firstName: "",
     lastName: "",
-    email: "",
     phoneNumber: "",
     address: "",
     city: "",
@@ -104,7 +103,6 @@ const PlaceOrder = () => {
     const orderData = {
       userAddress: `${data.firstName} ${data.lastName}, ${data.address}, ${data.city}, ${data.state}, ${data.country}, ${data.zip}`,
       phoneNumber: data.phoneNumber,
-      email: data.email,
       orderedItems: cartItems.map((item) => ({
         foodId: item.id,
         quantity: quantities[item.id],
@@ -262,19 +260,6 @@ const PlaceOrder = () => {
                       required
                     />
                   </div>
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label">Email</label>
-                  <input
-                    className="form-control"
-                    type="email"
-                    name="email"
-                    value={data.email}
-                    onChange={onChangeHandler}
-                    maxLength={60}
-                    required
-                  />
                 </div>
 
                 <div className="mb-3">
