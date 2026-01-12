@@ -1,4 +1,5 @@
 import { useContext, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { StoreContext } from "../../context/StoreContext";
 import axios from "axios";
 import axiosInstance from "../../service/axiosInstance";
@@ -7,6 +8,7 @@ import "./myorders.css";
 
 const MyOrders = () => {
   const { token } = useContext(StoreContext);
+  const location = useLocation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -100,15 +102,30 @@ const MyOrders = () => {
       console.log("UserEmail:", userEmail);
       console.log("Token exists:", !!token);
       
-      // Fetch ALL orders (same as admin does) - this definitely works
-      const res = await axiosInstance.get(`/api/orders/all`);
-      console.log("All orders response:", res);
-      
       let allOrders = [];
-      if (Array.isArray(res.data)) {
-        allOrders = res.data;
-      } else if (res.data?.data && Array.isArray(res.data.data)) {
-        allOrders = res.data.data;
+      
+      // Try to fetch user-specific orders first (if endpoint exists)
+      try {
+        const userRes = await axiosInstance.get(`/api/orders/user`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (Array.isArray(userRes.data)) {
+          allOrders = userRes.data;
+        } else if (userRes.data?.data && Array.isArray(userRes.data.data)) {
+          allOrders = userRes.data.data;
+        }
+        console.log("User-specific orders fetched:", allOrders.length);
+      } catch (userErr) {
+        console.log("User-specific endpoint not available, fetching all orders:", userErr.response?.status);
+        // Fallback to fetching all orders
+        const res = await axiosInstance.get(`/api/orders/all`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (Array.isArray(res.data)) {
+          allOrders = res.data;
+        } else if (res.data?.data && Array.isArray(res.data.data)) {
+          allOrders = res.data.data;
+        }
       }
       
       console.log(`Total orders from backend: ${allOrders.length}`);
@@ -125,28 +142,33 @@ const MyOrders = () => {
         const orderUserId = order.userId || 
                            order.user?.id || 
                            order.user?._id ||
+                           order.userId?.toString() ||
                            String(order.userId || '').trim();
         
         // Get email from order (fallback identifier - from checkout form)
         const orderEmail = (order.email || order.userEmail || order.user?.email || '').trim().toLowerCase();
         
         // Normalize our identifiers - handle both string and ObjectId formats
-        const normalizedUserId = (userId || '').toString().trim();
-        const normalizedUserEmail = (userEmail || '').toLowerCase().trim();
+        const normalizedUserId = userId ? String(userId).trim() : '';
+        const normalizedUserEmail = userEmail ? String(userEmail).toLowerCase().trim() : '';
         
-        // PRIMARY: Match by userId (exact string match - backend stores as string ObjectId like "696530195d8ee76c0ed510e3")
-        const userIdMatch = normalizedUserId && orderUserId && (
-          String(orderUserId).trim() === String(normalizedUserId).trim() ||
-          orderUserId.toString() === normalizedUserId.toString() ||
-          String(orderUserId).replace(/['"]/g, '') === String(normalizedUserId).replace(/['"]/g, '')
-        );
+        // PRIMARY: Match by userId (exact string match - backend stores as string ObjectId)
+        let userIdMatch = false;
+        if (normalizedUserId && orderUserId) {
+          const orderUserIdStr = String(orderUserId).trim();
+          const ourUserIdStr = normalizedUserId;
+          userIdMatch = orderUserIdStr === ourUserIdStr || 
+                       orderUserIdStr.replace(/['"]/g, '') === ourUserIdStr.replace(/['"]/g, '');
+        }
         
-        // SECONDARY: Match by email (fallback if userId not available)
+        // SECONDARY: Match by email (fallback if userId not available or doesn't match)
         const emailMatch = normalizedUserEmail && orderEmail && 
                           orderEmail === normalizedUserEmail;
         
+        const isMatch = userIdMatch || emailMatch;
+        
         // Log matches for debugging
-        if (userIdMatch || emailMatch) {
+        if (isMatch) {
           console.log("✅ MATCHED ORDER:", {
             orderId: order.id || order._id,
             orderUserId,
@@ -160,7 +182,7 @@ const MyOrders = () => {
           });
         }
         
-        return userIdMatch || emailMatch;
+        return isMatch;
       });
       
       console.log(`=== RESULTS ===`);
@@ -195,9 +217,8 @@ const MyOrders = () => {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchOrders();
-  }, [token]);
+  }, [token, location.key]); // Refresh when token changes or when navigating to this page
 
   return (
     <div className="container">
@@ -275,17 +296,18 @@ const MyOrders = () => {
                   <td>
                     <img src={assets.delivery} alt="Item" width={48} height={48} />
                   </td>
-                  <td>${order.amount.toFixed(2)}</td>
+                  <td>${order.amount?.toFixed(2) || '0.00'}</td>
                   <td>
                     <div className="fw-bold text-capitalize">
-                      {order.orderItems.map((item, i) => (
+                      {(order.orderItems || order.orderedItems || []).map((item, i) => (
                         <span key={i}>
                           {item.name} x {item.quantity}
-                          {i !== order.orderItems.length - 1 && ", "}
+                          {i !== (order.orderItems || order.orderedItems || []).length - 1 && ", "}
                         </span>
-                        
                       ))}
-                  <td className="fw-normal text-capitalize">{order.userAddress}</td>
+                    </div>
+                    <div className="fw-normal text-capitalize mt-2">
+                      {order.userAddress || 'N/A'}
                     </div>
                   </td>
                   <td className="fw-bold">{order.orderStatus}</td>
