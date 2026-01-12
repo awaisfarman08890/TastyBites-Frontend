@@ -10,8 +10,6 @@ const MyOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [debugMode, setDebugMode] = useState(false);
-  const [allOrdersDebug, setAllOrdersDebug] = useState([]);
 
   // Helper function to extract userId from JWT token
   const getUserIdFromToken = (token) => {
@@ -109,75 +107,46 @@ const MyOrders = () => {
         console.log("All fields in first order:", Object.keys(allOrders[0]));
       }
       
-      // Filter orders - PRIMARY MATCH BY EMAIL (since orders use email field)
+      // Filter orders - Match by email from order (orders use email field from checkout form)
+      // The order email comes from the checkout form, which might differ from login email
       const userOrders = allOrders.filter(order => {
-        // Get email from order (this is the primary identifier based on debug data)
-        const orderEmail = order.email || 
-                          order.userEmail ||
-                          order.user?.email ||
-                          String(order.email || '').trim().toLowerCase();
+        // Get email from order (this is what was entered in checkout form)
+        const orderEmail = (order.email || order.userEmail || order.user?.email || '').trim().toLowerCase();
         
-        // Get userId from order (secondary check)
-        const orderUserId = order.userId || 
-                           order.userId?.toString() ||
-                           order.user?.id || 
-                           order.user?._id ||
-                           String(order.userId || '').trim();
+        // Normalize user email for comparison
+        const normalizedUserEmail = (userEmail || '').toLowerCase().trim();
         
-        // Normalize emails for comparison
-        const normalizedOrderEmail = orderEmail.toLowerCase().trim();
-        const normalizedUserEmail = userEmail ? userEmail.toLowerCase().trim() : '';
+        // Match by email (case-insensitive, trimmed)
+        // This matches orders placed with the logged-in user's email OR the email from checkout
+        const emailMatch = normalizedUserEmail && orderEmail && orderEmail === normalizedUserEmail;
         
-        // PRIMARY: Match by email (case-insensitive, trimmed)
-        const emailMatch = normalizedUserEmail && normalizedOrderEmail && 
-                          normalizedOrderEmail === normalizedUserEmail;
+        // Also check if userId matches (if orders have userId field)
+        const orderUserId = (order.userId || order.user?.id || order.user?._id || '').toString().trim();
+        const normalizedUserId = (userId || '').toString().trim();
+        const userIdMatch = normalizedUserId && orderUserId && orderUserId === normalizedUserId;
         
-        // SECONDARY: Match by userId (if available)
-        const userIdMatch = userId && orderUserId && (
-          String(orderUserId).trim() === String(userId).trim() ||
-          Number(orderUserId) === Number(userId)
-        );
-        
-        // If we have a match, log it
-        if (emailMatch || userIdMatch) {
-          console.log("✅ MATCHED ORDER:", {
-            orderId: order.id,
-            orderEmail: normalizedOrderEmail,
-            userEmail: normalizedUserEmail,
-            emailMatch,
-            orderUserId,
-            userId,
-            userIdMatch,
-            orderAmount: order.amount,
-            orderStatus: order.orderStatus,
-            paymentStatus: order.paymentStatus
-          });
-          return true;
-        }
-        
-        return false;
+        return emailMatch || userIdMatch;
       });
       
       console.log(`=== RESULTS ===`);
       console.log(`Total orders: ${allOrders.length}`);
       console.log(`User orders: ${userOrders.length}`);
       
-      // Store all orders for debug mode
-      setAllOrdersDebug(allOrders);
-      
       if (userOrders.length === 0 && allOrders.length > 0) {
         console.error("⚠️ NO ORDERS MATCHED!");
-        console.error("First order details:", {
-          order: allOrders[0],
-          orderUserId: allOrders[0]?.userId,
-          orderUser: allOrders[0]?.user,
-          ourUserId: userId,
-          ourEmail: userEmail
+        console.error("Your email:", userEmail);
+        console.error("Sample order emails:", allOrders.slice(0, 5).map(o => o.email || o.userEmail));
+        
+        // Check if any orders have matching email (case variations)
+        const possibleMatches = allOrders.filter(o => {
+          const oEmail = (o.email || o.userEmail || '').toLowerCase();
+          const uEmail = (userEmail || '').toLowerCase();
+          return oEmail && uEmail && oEmail.includes(uEmail.split('@')[0]);
         });
         
-        // Enable debug mode automatically if no matches
-        setDebugMode(true);
-        setError(`No orders matched. Found ${allOrders.length} total orders. Check console for details.`);
+        if (possibleMatches.length > 0) {
+          console.log("Found potential matches with similar emails:", possibleMatches.map(o => o.email));
+        }
       }
       
       setOrders(userOrders);
@@ -240,21 +209,14 @@ const MyOrders = () => {
             <p className="text-muted">
               {!localStorage.getItem("userId") 
                 ? "Please log in to view your orders." 
-                : "You haven't placed any orders yet."}
+                : `You haven't placed any orders yet, or orders were placed with a different email.`}
             </p>
-            {allOrdersDebug.length > 0 && (
-              <div className="alert alert-warning mt-3">
-                <strong>Debug Info:</strong> Found {allOrdersDebug.length} total orders in database.
+            {localStorage.getItem("userEmail") && (
+              <p className="text-muted small">
+                Logged in as: <strong>{localStorage.getItem("userEmail")}</strong>
                 <br />
-                <small>Your userId: {localStorage.getItem("userId") || "Not found"}</small>
-                <br />
-                <button 
-                  className="btn btn-sm btn-warning mt-2" 
-                  onClick={() => setDebugMode(!debugMode)}
-                >
-                  {debugMode ? "Hide" : "Show"} All Orders (Debug)
-                </button>
-              </div>
+                Orders are matched by the email used during checkout.
+              </p>
             )}
             <button 
               className="btn btn-tt mt-3" 
@@ -309,55 +271,6 @@ const MyOrders = () => {
               ))}
             </tbody>
           </table>
-        )}
-        
-        {/* Debug Mode: Show all orders */}
-        {debugMode && allOrdersDebug.length > 0 && (
-          <div className="mt-5">
-            <div className="alert alert-info">
-              <h5>Debug Mode: All Orders in Database ({allOrdersDebug.length})</h5>
-              <p className="mb-2">
-                <strong>Your userId:</strong> {localStorage.getItem("userId") || "Not found"} | 
-                <strong> Your email:</strong> {localStorage.getItem("userEmail") || localStorage.getItem("userId") || "Not found"}
-              </p>
-              <p className="mb-2 text-warning">
-                <strong>Note:</strong> Orders are matched by email. Make sure your logged-in email matches the email used when placing orders.
-              </p>
-              <button 
-                className="btn btn-sm btn-secondary" 
-                onClick={() => setDebugMode(false)}
-              >
-                Hide Debug Info
-              </button>
-            </div>
-            <table className="table table-sm table-bordered">
-              <thead>
-                <tr>
-                  <th>Order ID</th>
-                  <th>Order userId</th>
-                  <th>Order user.id</th>
-                  <th>Order Email</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allOrdersDebug.slice(0, 10).map((order, idx) => (
-                  <tr key={idx} className={orders.some(o => o.id === order.id) ? "table-success" : ""}>
-                    <td>{order.id}</td>
-                    <td>{order.userId || "N/A"}</td>
-                    <td>{order.user?.id || order.user?._id || "N/A"}</td>
-                    <td>{order.email || order.userEmail || "N/A"}</td>
-                    <td>${order.amount}</td>
-                    <td>{order.orderStatus}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {allOrdersDebug.length > 10 && (
-              <p className="text-muted">Showing first 10 of {allOrdersDebug.length} orders</p>
-            )}
-          </div>
         )}
       </div>
     </div>
