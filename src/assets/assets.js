@@ -1,3 +1,4 @@
+// src/assets/assets.js
 import logo from "./logo.png";
 import cart from "./cart.png";
 import burger from "./burger.png";
@@ -14,14 +15,29 @@ import Fish from "./Fish.png";
 import Chips from "./Chips.png";
 import Samosa from "./Samosa.png";
 import about from "./about.png";
+import parcel from "./parcel.png";
+import upload from "./upload.png";
 
+// Frontend + Admin compatible
 export const assets = {
   logo,
   cart,
   login,
   profile,
   delivery,
-  about
+  about,
+  burger,
+  pizza,
+  cake,
+  salad,
+  roll,
+  iceCream,
+  briyani,
+  Fish,
+  Chips,
+  Samosa,
+  parcel,
+  upload
 };
 
 export const categories = [
