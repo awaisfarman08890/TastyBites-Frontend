@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Route, Routes, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 
@@ -50,7 +50,15 @@ const ProtectedRoute = ({ children }) => {
 const PublicRoute = ({ children }) => {
   const { token } = useContext(StoreContext);
   // Check both context token and localStorage as fallback
-  const isAuthenticated = token || localStorage.getItem("token");
+  // Use useEffect to handle token changes properly
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return !!(token || localStorage.getItem("token"));
+  });
+
+  useEffect(() => {
+    const currentToken = token || localStorage.getItem("token");
+    setIsAuthenticated(!!currentToken);
+  }, [token]);
   
   return isAuthenticated ? <Navigate to="/" replace /> : children;
 };

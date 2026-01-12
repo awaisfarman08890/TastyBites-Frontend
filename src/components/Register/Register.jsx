@@ -71,10 +71,24 @@ const Register = () => {
           localStorage.setItem("userId", userId);
         }
 
+        // Persist user email for order matching
+        const userEmail = 
+          loginRes.data.email ||
+          loginRes.data.userEmail ||
+          loginRes.data.user?.email ||
+          data.email;
+        if (userEmail) {
+          localStorage.setItem("userEmail", userEmail);
+        }
+
+        // Update context token immediately to prevent routing issues
         setToken(loginRes.data.token);
       }
 
-      navigate("/"); // redirect homepage / dashboard
+      // Small delay to ensure context updates before navigation
+      setTimeout(() => {
+        navigate("/"); // redirect homepage / dashboard
+      }, 100);
     } catch (error) {
       console.log("Register/Login error:", error.response || error); // Debug
       toast.error(
@@ -150,7 +164,7 @@ const Register = () => {
             </div>
 
             <div className="text-center mt-3">
-              Already have an account? <Link to="/login">Login</Link>
+              Already have an account? <Link to="/login" onClick={(e) => e.stopPropagation()}>Login</Link>
             </div>
           </form>
         </div>
