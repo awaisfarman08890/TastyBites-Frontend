@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import "./Menubar.css";
 import { assets } from "../../assets/assets";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { StoreContext } from "../../context/StoreContext";
 
 const Menubar = () => {
@@ -9,6 +9,7 @@ const Menubar = () => {
   const { quantities, token, setToken, setQuantities } = useContext(StoreContext);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const uniqueItems =
     quantities && Object.values(quantities).filter((q) => q > 0).length;
@@ -17,6 +18,17 @@ const Menubar = () => {
     const t = setTimeout(() => setLoading(false), 600);
     return () => clearTimeout(t);
   }, []);
+
+  // Keep active state in sync with current route (even on refresh or external nav)
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === "/" || path.startsWith("/home")) setActive("home");
+    else if (path.startsWith("/explore")) setActive("explore");
+    else if (path.startsWith("/privacy-policy")) setActive("privacy");
+    else if (path.startsWith("/contact")) setActive("contact");
+    else if (path.startsWith("/about")) setActive("about");
+    else setActive(""); // no highlight for other routes
+  }, [location.pathname]);
 
   const logout = () => {
     localStorage.removeItem("token");
