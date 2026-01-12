@@ -12,52 +12,42 @@ export const StoreContextProvider = ({ children }) => {
   const [loadingFood, setLoadingFood] = useState(true);
 
   const increaseQuantity = async (id) => {
-    setQuantities((prev) => ({
-      ...prev,
-      [id]: (prev[id] || 0) + 1,
-    }));
-
+    setQuantities(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
     if (token) {
       try {
         await addToCart(id, token);
       } catch (err) {
-        console.error("Error adding food:", err.response || err);
         toast.error("Failed to add food to cart.");
+        console.error(err);
       }
     }
   };
 
   const decreaseQuantity = async (id) => {
-    setQuantities((prev) => {
+    setQuantities(prev => {
       const updated = { ...prev };
       if (updated[id] <= 1) delete updated[id];
       else updated[id]--;
       return updated;
     });
-
     if (token) {
       try {
         await removeQtyFromCart(id, token);
       } catch (err) {
-        console.error("Decrease qty failed:", err.response || err);
         toast.error("Failed to decrease quantity in cart.");
+        console.error(err);
       }
     }
   };
 
   const removeFromCart = async (foodId) => {
     if (!token) return;
-
     try {
       await removeQtyFromCart(foodId, token);
-      setQuantities((prev) => {
-        const updated = { ...prev };
-        delete updated[foodId];
-        return updated;
-      });
+      setQuantities(prev => { const u = { ...prev }; delete u[foodId]; return u; });
     } catch (err) {
-      console.error("Remove from cart failed:", err.response || err);
       toast.error("Failed to remove item from cart.");
+      console.error(err);
     }
   };
 
@@ -66,8 +56,8 @@ export const StoreContextProvider = ({ children }) => {
       const items = await getCartData(tk);
       setQuantities(items || {});
     } catch (err) {
-      console.error("Cart load failed:", err.response || err);
       setQuantities({});
+      console.error(err);
       toast.error("Failed to load cart data.");
     }
   };
@@ -75,14 +65,12 @@ export const StoreContextProvider = ({ children }) => {
   useEffect(() => {
     (async () => {
       setLoadingFood(true);
-
       try {
         const foods = await fetchFoodItems();
-        console.log("Fetched foods:", foods);
         setFoodList(Array.isArray(foods) ? foods : []);
       } catch (err) {
-        console.error("Error fetching food list:", err.response || err.message);
         toast.error("Failed to fetch the food list.");
+        console.error(err);
         setFoodList([]);
       } finally {
         setLoadingFood(false);
@@ -97,20 +85,10 @@ export const StoreContextProvider = ({ children }) => {
   }, []);
 
   return (
-    <StoreContext.Provider
-      value={{
-        foodList,
-        quantities,
-        increaseQuantity,
-        decreaseQuantity,
-        removeFromCart,
-        token,
-        setToken,
-        setQuantities,
-        loadCartData,
-        loadingFood,
-      }}
-    >
+    <StoreContext.Provider value={{
+      foodList, quantities, increaseQuantity, decreaseQuantity, removeFromCart,
+      token, setToken, setQuantities, loadCartData, loadingFood
+    }}>
       {children}
     </StoreContext.Provider>
   );
