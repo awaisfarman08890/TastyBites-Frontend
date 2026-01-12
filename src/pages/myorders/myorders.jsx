@@ -10,6 +10,8 @@ const MyOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [debugMode, setDebugMode] = useState(false);
+  const [allOrdersDebug, setAllOrdersDebug] = useState([]);
 
   // Helper function to extract userId from JWT token
   const getUserIdFromToken = (token) => {
@@ -48,133 +50,133 @@ const MyOrders = () => {
         }
       }
       
-      console.log("Fetching orders with token...");
+      // Also get user email from token for matching
+      let userEmail = null;
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        const decoded = JSON.parse(jsonPayload);
+        userEmail = decoded.email || decoded.userEmail;
+        if (userEmail) {
+          localStorage.setItem("userEmail", userEmail);
+        }
+      } catch (e) {
+        console.log("Could not extract email from token");
+      }
+      
+      console.log("=== FETCHING ORDERS ===");
       console.log("UserId:", userId);
+      console.log("UserEmail:", userEmail);
+      console.log("Token exists:", !!token);
       
-      // The backend likely extracts user from JWT token, so try token-based endpoints first
-      let res;
-      let data = [];
+      // Fetch ALL orders (same as admin does) - this definitely works
+      const res = await axiosInstance.get(`/api/orders/all`);
+      console.log("All orders response:", res);
       
-      try {
-        // First try: Token-based endpoint (backend extracts user from token)
-        // Use axiosInstance which automatically includes the token
-        res = await axiosInstance.get(`/api/orders`);
-        console.log("API Response (token-based):", res.data);
-        
-        // Handle response
-        if (Array.isArray(res.data)) {
-          data = res.data;
-        } else if (res.data?.data && Array.isArray(res.data.data)) {
-          data = res.data.data;
-        } else if (res.data?.orders && Array.isArray(res.data.orders)) {
-          data = res.data.orders;
-        }
-        
-        if (data.length > 0) {
-          console.log("Successfully fetched orders via token:", data.length);
-          setOrders(data);
-          return;
-        }
-      } catch (err1) {
-        console.log("Token-based endpoint failed, trying alternatives...", err1.response?.status);
+      let allOrders = [];
+      if (Array.isArray(res.data)) {
+        allOrders = res.data;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        allOrders = res.data.data;
       }
       
-      // Second try: Get all orders and filter by userId from token
-      try {
-        const userId = localStorage.getItem("userId");
-        console.log("Trying to fetch all orders and filter by userId:", userId);
+      console.log(`Total orders from backend: ${allOrders.length}`);
+      
+      if (allOrders.length > 0) {
+        console.log("Sample order structure:", JSON.stringify(allOrders[0], null, 2));
+        console.log("All fields in first order:", Object.keys(allOrders[0]));
+      }
+      
+      // Filter orders - be VERY flexible with matching
+      const userOrders = allOrders.filter(order => {
+        // Get all possible userId values from order
+        const orderUserId = order.userId || 
+                           order.userId?.toString() ||
+                           order.user?.id || 
+                           order.user?._id ||
+                           order.user?.id?.toString() ||
+                           order.user?._id?.toString() ||
+                           order.userId?.valueOf?.() ||
+                           String(order.userId || '');
         
-        res = await axiosInstance.get(`/api/orders/all`);
-        console.log("All orders response:", res.data);
+        // Get all possible email values from order
+        const orderEmail = order.email || 
+                          order.userEmail ||
+                          order.user?.email ||
+                          order.userEmail?.toLowerCase?.() ||
+                          String(order.email || '');
         
-        if (Array.isArray(res.data)) {
-          console.log("Total orders from backend:", res.data.length);
-          console.log("Sample order structure:", res.data[0]);
-          
-          // Filter orders - check multiple possible userId fields
-          const userOrders = res.data.filter(order => {
-            if (!userId) {
-              console.log("No userId available for filtering");
-              return false;
-            }
-            
-            // Check various userId field formats
-            const orderUserId = order.userId || 
-                               order.userId?.toString() ||
-                               order.user?.id || 
-                               order.user?._id ||
-                               order.user?.id?.toString() ||
-                               order.user?._id?.toString();
-            
-            // Also check email if userId doesn't match
-            const userEmail = localStorage.getItem("userEmail");
-            const orderEmail = order.email || order.user?.email;
-            
-            const userIdMatch = orderUserId && orderUserId.toString() === userId.toString();
-            const emailMatch = userEmail && orderEmail && orderEmail.toLowerCase() === userEmail.toLowerCase();
-            
-            if (userIdMatch || emailMatch) {
-              console.log("Matched order:", order.id, {
-                orderUserId,
-                userId,
-                userIdMatch,
-                orderEmail,
-                userEmail,
-                emailMatch
-              });
-              return true;
-            }
-            
-            return false;
+        // Match by userId (string or number comparison)
+        const userIdMatch = userId && orderUserId && (
+          String(orderUserId) === String(userId) ||
+          Number(orderUserId) === Number(userId) ||
+          orderUserId.toString() === userId.toString()
+        );
+        
+        // Match by email (case-insensitive)
+        const emailMatch = userEmail && orderEmail && (
+          String(orderEmail).toLowerCase() === String(userEmail).toLowerCase()
+        );
+        
+        // If we have a match, log it
+        if (userIdMatch || emailMatch) {
+          console.log("✅ MATCHED ORDER:", {
+            orderId: order.id,
+            orderUserId,
+            userId,
+            userIdMatch,
+            orderEmail,
+            userEmail,
+            emailMatch,
+            orderAmount: order.amount,
+            orderStatus: order.orderStatus,
+            paymentStatus: order.paymentStatus
           });
-          
-          console.log(`Filtered ${userOrders.length} orders from ${res.data.length} total orders`);
-          
-          if (userOrders.length === 0 && res.data.length > 0) {
-            console.warn("No orders matched! Sample order fields:", {
-              firstOrder: res.data[0],
-              userId: userId,
-              availableFields: Object.keys(res.data[0] || {})
-            });
-          }
-          
-          setOrders(userOrders);
-          return;
+          return true;
         }
-      } catch (err2) {
-        console.log("Fetching all orders failed:", err2.response?.status);
-      }
-      
-      // Third try: userId query parameter (fallback)
-      try {
-        const userId = localStorage.getItem("userId");
-        if (userId) {
-          console.log("Trying userId query parameter:", userId);
-          res = await axiosInstance.get(`/api/orders?userId=${userId}`);
-          console.log("API Response (userId query):", res.data);
-          
-          if (Array.isArray(res.data)) {
-            data = res.data;
-          } else if (res.data?.data && Array.isArray(res.data.data)) {
-            data = res.data.data;
-          }
+        
+        // Log non-matching orders for debugging
+        if (allOrders.length <= 5) {
+          console.log("❌ NOT MATCHED:", {
+            orderId: order.id,
+            orderUserId,
+            userId,
+            orderEmail,
+            userEmail
+          });
         }
-      } catch (err3) {
-        console.log("UserId query parameter failed:", err3.response?.status);
+        
+        return false;
+      });
+      
+      console.log(`=== RESULTS ===`);
+      console.log(`Total orders: ${allOrders.length}`);
+      console.log(`User orders: ${userOrders.length}`);
+      
+      // Store all orders for debug mode
+      setAllOrdersDebug(allOrders);
+      
+      if (userOrders.length === 0 && allOrders.length > 0) {
+        console.error("⚠️ NO ORDERS MATCHED!");
+        console.error("First order details:", {
+          order: allOrders[0],
+          orderUserId: allOrders[0]?.userId,
+          orderUser: allOrders[0]?.user,
+          ourUserId: userId,
+          ourEmail: userEmail
+        });
+        
+        // Enable debug mode automatically if no matches
+        setDebugMode(true);
+        setError(`No orders matched. Found ${allOrders.length} total orders. Check console for details.`);
       }
       
-      console.log("Final orders data:", data);
-      console.log("Number of orders:", data.length);
-      
-      if (data.length === 0) {
-        console.warn("No orders found after trying all methods");
-        console.warn("Available localStorage userId:", localStorage.getItem("userId"));
-        console.warn("Token exists:", !!token);
-      }
-      
-      setOrders(data);
+      setOrders(userOrders);
     } catch (err) {
-      console.error("Error fetching orders:", err);
+      console.error("❌ Error fetching orders:", err);
       console.error("Error response:", err.response?.data);
       console.error("Error status:", err.response?.status);
       
@@ -194,7 +196,17 @@ const MyOrders = () => {
   return (
     <div className="container">
       <div className="py-5 row justify-content-center">
-        <h2 className="mb-4">My Orders</h2>
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2 className="mb-0">My Orders</h2>
+          <button 
+            className="btn btn-sm btn-tt" 
+            onClick={fetchOrders}
+            disabled={loading}
+          >
+            <i className={`bi bi-arrow-clockwise ${loading ? 'spinner-border spinner-border-sm' : ''} me-2`}></i>
+            {loading ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
         {loading ? (
           <div className="text-center py-4">
             <div className="spinner-border text-tomato" role="status">
@@ -224,6 +236,20 @@ const MyOrders = () => {
                 ? "Please log in to view your orders." 
                 : "You haven't placed any orders yet."}
             </p>
+            {allOrdersDebug.length > 0 && (
+              <div className="alert alert-warning mt-3">
+                <strong>Debug Info:</strong> Found {allOrdersDebug.length} total orders in database.
+                <br />
+                <small>Your userId: {localStorage.getItem("userId") || "Not found"}</small>
+                <br />
+                <button 
+                  className="btn btn-sm btn-warning mt-2" 
+                  onClick={() => setDebugMode(!debugMode)}
+                >
+                  {debugMode ? "Hide" : "Show"} All Orders (Debug)
+                </button>
+              </div>
+            )}
             <button 
               className="btn btn-tt mt-3" 
               onClick={fetchOrders}
@@ -277,6 +303,52 @@ const MyOrders = () => {
               ))}
             </tbody>
           </table>
+        )}
+        
+        {/* Debug Mode: Show all orders */}
+        {debugMode && allOrdersDebug.length > 0 && (
+          <div className="mt-5">
+            <div className="alert alert-info">
+              <h5>Debug Mode: All Orders in Database ({allOrdersDebug.length})</h5>
+              <p className="mb-2">
+                <strong>Your userId:</strong> {localStorage.getItem("userId") || "Not found"} | 
+                <strong> Your email:</strong> {localStorage.getItem("userEmail") || "Not found"}
+              </p>
+              <button 
+                className="btn btn-sm btn-secondary" 
+                onClick={() => setDebugMode(false)}
+              >
+                Hide Debug Info
+              </button>
+            </div>
+            <table className="table table-sm table-bordered">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Order userId</th>
+                  <th>Order user.id</th>
+                  <th>Order Email</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allOrdersDebug.slice(0, 10).map((order, idx) => (
+                  <tr key={idx} className={orders.some(o => o.id === order.id) ? "table-success" : ""}>
+                    <td>{order.id}</td>
+                    <td>{order.userId || "N/A"}</td>
+                    <td>{order.user?.id || order.user?._id || "N/A"}</td>
+                    <td>{order.email || order.userEmail || "N/A"}</td>
+                    <td>${order.amount}</td>
+                    <td>{order.orderStatus}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {allOrdersDebug.length > 10 && (
+              <p className="text-muted">Showing first 10 of {allOrdersDebug.length} orders</p>
+            )}
+          </div>
         )}
       </div>
     </div>
