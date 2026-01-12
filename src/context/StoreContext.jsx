@@ -18,15 +18,34 @@ export const StoreContextProvider = ({ children }) => {
 
   // ➕ Increase quantity
   const increaseQuantity = async (id) => {
+    // Don't proceed if token is not available or still loading
+    if (!token) {
+      toast.error("Please log in to add items to cart.");
+      return;
+    }
+
+    // Optimistically update UI
     setQuantities((prev) => ({
       ...prev,
       [id]: (prev[id] || 0) + 1,
     }));
 
-    if (token) {
-      try {
-        await addToCart(id, token);
-      } catch (err) {
+    try {
+      await addToCart(id, token);
+    } catch (err) {
+      // Revert optimistic update on error
+      setQuantities((prev) => {
+        const updated = { ...prev };
+        if (updated[id] > 1) {
+          updated[id]--;
+        } else {
+          delete updated[id];
+        }
+        return updated;
+      });
+      
+      // Only show error if it's not a network/auth error (to avoid duplicate toasts)
+      if (err.response?.status !== 401 && err.response?.status !== 403) {
         console.error("Error adding food:", err.response || err);
         toast.error("Failed to add food to cart.");
       }
