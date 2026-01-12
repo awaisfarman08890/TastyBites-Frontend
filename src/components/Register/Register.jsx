@@ -60,6 +60,17 @@ const Register = () => {
 
       if (loginRes.data?.token) {
         localStorage.setItem("token", loginRes.data.token);
+
+        // Persist user id from common response shapes
+        const userId =
+          loginRes.data.userId ||
+          loginRes.data.id ||
+          loginRes.data.user?._id ||
+          loginRes.data.user?.id;
+        if (userId) {
+          localStorage.setItem("userId", userId);
+        }
+
         setToken(loginRes.data.token);
       }
 
