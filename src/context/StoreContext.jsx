@@ -3,16 +3,16 @@ import { fetchFoodItems } from "../service/foodService";
 import { addToCart, removeQtyFromCart, getCartData } from "../service/cartService";
 import { toast } from "react-toastify";
 
-// Create context
+// Create store context
 export const StoreContext = createContext(null);
 
 export const StoreContextProvider = ({ children }) => {
   const [foodList, setFoodList] = useState([]);
   const [quantities, setQuantities] = useState({});
   const [token, setToken] = useState("");
-  const [loadingFood, setLoadingFood] = useState(true); // Loading state
+  const [loadingFood, setLoadingFood] = useState(true);
 
-  // Increase quantity
+  // ➕ Increase quantity
   const increaseQuantity = async (id) => {
     setQuantities((prev) => ({
       ...prev,
@@ -24,12 +24,12 @@ export const StoreContextProvider = ({ children }) => {
         await addToCart(id, token);
       } catch (err) {
         console.error("Error adding food:", err.response || err);
-        toast.error("An error occurred while adding food to cart.");
+        toast.error("Failed to add food to cart.");
       }
     }
   };
 
-  //  Decrease quantity
+  // ➖ Decrease quantity
   const decreaseQuantity = async (id) => {
     setQuantities((prev) => {
       const updated = { ...prev };
@@ -48,7 +48,7 @@ export const StoreContextProvider = ({ children }) => {
     }
   };
 
-  //  Remove item completely
+  // 🗑️ Remove item completely from cart
   const removeFromCart = async (foodId) => {
     if (!token) return;
 
@@ -65,7 +65,7 @@ export const StoreContextProvider = ({ children }) => {
     }
   };
 
-  //  Load cart from backend
+  // 🔄 Load cart from backend
   const loadCartData = async (tk) => {
     try {
       const items = await getCartData(tk);
@@ -77,17 +77,18 @@ export const StoreContextProvider = ({ children }) => {
     }
   };
 
-  //  Initial load
+  // 🚀 Initial load
   useEffect(() => {
     (async () => {
       setLoadingFood(true);
+
+      // Fetch food items
       try {
-        // Fetch food list
-        const foodData = await fetchFoodItems();
-        console.log("Fetched food data:", foodData);
-        setFoodList(Array.isArray(foodData) ? foodData : []);
-      } catch (error) {
-        console.error("Error fetching food list:", error.response || error);
+        const foods = await fetchFoodItems();
+        console.log("Fetched food items:", foods);
+        setFoodList(Array.isArray(foods) ? foods : []);
+      } catch (err) {
+        console.error("Error fetching food list:", err.response || err);
         toast.error("Failed to fetch the food list.");
         setFoodList([]);
       } finally {
@@ -115,7 +116,7 @@ export const StoreContextProvider = ({ children }) => {
         setToken,
         setQuantities,
         loadCartData,
-        loadingFood, 
+        loadingFood, // expose loading state
       }}
     >
       {children}
