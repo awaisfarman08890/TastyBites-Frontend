@@ -31,6 +31,17 @@ const Login = () => {
       // EXPECTED: response.token
       if (response && response.token) {
         localStorage.setItem("token", response.token);
+
+        // Persist user id if backend returns it (common fields)
+        const userId =
+          response.userId ||
+          response.id ||
+          response.user?.id ||
+          response.user?._id;
+        if (userId) {
+          localStorage.setItem("userId", userId);
+        }
+
         setToken(response.token);
 
         await loadCartData(response.token);

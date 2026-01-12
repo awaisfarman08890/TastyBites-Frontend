@@ -12,6 +12,10 @@ const MyOrders = () => {
     if (!token) return;
     try {
       const userId = localStorage.getItem("userId");
+      if (!userId) {
+        console.error("Missing userId in localStorage; cannot fetch orders.");
+        return;
+      }
       const res = await axios.get(`https://tasty-bities-backend-production.up.railway.app/api/orders?userId=${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -48,7 +52,7 @@ const MyOrders = () => {
             </thead>
             <tbody>
               {orders.map((order, idx) => (
-                <tr key={idx}>
+                <tr key={order.id ?? idx}>
                   <td>
                     <img src={assets.delivery} alt="Item" width={48} height={48} />
                   </td>
