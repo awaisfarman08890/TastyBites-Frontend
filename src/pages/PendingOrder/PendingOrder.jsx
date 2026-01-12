@@ -5,6 +5,7 @@ import {
   fetchPendingOrders,
   retryPayment,
 } from "../../service/pendingService";
+import { getUserIdFromToken } from "../../utils/tokenUtils";
 
 const PendingOrders = () => {
   const { token } = useContext(StoreContext);
@@ -14,7 +15,7 @@ const PendingOrders = () => {
 
   useEffect(() => {
     const loadPendingOrders = async () => {
-      const userId = localStorage.getItem("userId");
+      const userId = getUserIdFromToken(token);
       if (!userId || !token) {
         setLoading(false);
         return;

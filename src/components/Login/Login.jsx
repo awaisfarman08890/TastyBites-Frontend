@@ -31,27 +31,6 @@ const Login = () => {
       // EXPECTED: response.token
       if (response && response.token) {
         localStorage.setItem("token", response.token);
-
-        // Persist user id if backend returns it (common fields)
-        const userId =
-          response.userId ||
-          response.id ||
-          response.user?.id ||
-          response.user?._id;
-        if (userId) {
-          localStorage.setItem("userId", userId);
-        }
-
-        // Persist user email for order matching
-        const userEmail = 
-          response.email ||
-          response.userEmail ||
-          response.user?.email ||
-          data.email; // Use login email as fallback
-        if (userEmail) {
-          localStorage.setItem("userEmail", userEmail);
-        }
-
         setToken(response.token);
 
         await loadCartData(response.token);

@@ -60,27 +60,6 @@ const Register = () => {
 
       if (loginRes.data?.token) {
         localStorage.setItem("token", loginRes.data.token);
-
-        // Persist user id from common response shapes
-        const userId =
-          loginRes.data.userId ||
-          loginRes.data.id ||
-          loginRes.data.user?._id ||
-          loginRes.data.user?.id;
-        if (userId) {
-          localStorage.setItem("userId", userId);
-        }
-
-        // Persist user email for order matching
-        const userEmail = 
-          loginRes.data.email ||
-          loginRes.data.userEmail ||
-          loginRes.data.user?.email ||
-          data.email;
-        if (userEmail) {
-          localStorage.setItem("userEmail", userEmail);
-        }
-
         // Update context token immediately to prevent routing issues
         setToken(loginRes.data.token);
       }

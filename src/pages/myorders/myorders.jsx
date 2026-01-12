@@ -4,6 +4,7 @@ import { StoreContext } from "../../context/StoreContext";
 import axios from "axios";
 import axiosInstance from "../../service/axiosInstance";
 import { assets } from "../../assets/assets";
+import { getUserIdFromToken, getUserEmailFromToken } from "../../utils/tokenUtils";
 import "./myorders.css";
 
 const MyOrders = () => {
@@ -13,21 +14,6 @@ const MyOrders = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Helper function to extract userId from JWT token
-  const getUserIdFromToken = (token) => {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      const decoded = JSON.parse(jsonPayload);
-      return decoded.userId || decoded.id || decoded.user?.id || decoded.sub;
-    } catch (e) {
-      console.error("Error decoding token:", e);
-      return null;
-    }
-  };
 
   const fetchOrders = async () => {
     if (!token) {
@@ -40,61 +26,19 @@ const MyOrders = () => {
       setLoading(true);
       setError(null);
       
-      // Get user email from multiple sources for matching
-      let userEmail = localStorage.getItem("userEmail");
-      let userId = localStorage.getItem("userId");
+      // Extract userId and email from token
+      let userId = getUserIdFromToken(token);
+      let userEmail = getUserEmailFromToken(token);
       
-      // Decode token to get email and userId
-      try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        const decoded = JSON.parse(jsonPayload);
-        
-        // Get email from token
-        const tokenEmail = decoded.email || decoded.userEmail || decoded.sub;
-        if (tokenEmail && !userEmail) {
-          userEmail = tokenEmail;
-          localStorage.setItem("userEmail", userEmail);
-        }
-        
-        // Get userId from token if not already set
-        // Backend stores userId as MongoDB ObjectId string (e.g., "696530195d8ee76c0ed510e3")
-        if (!userId) {
-          userId = decoded.userId || 
-                   decoded.id || 
-                   decoded.userId?.toString() ||
-                   decoded.user?.id || 
-                   decoded.user?._id ||
-                   decoded.sub;
-          if (userId) {
-            // Store as string to match database format
-            localStorage.setItem("userId", String(userId));
-            console.log("Stored userId from token:", String(userId));
-          }
-        } else {
-          // Ensure userId is a string to match database format
-          userId = String(userId);
-        }
-      } catch (e) {
-        console.log("Could not extract info from token:", e);
+      // Ensure userId is a string to match database format
+      if (userId) {
+        userId = String(userId);
       }
       
       // If userId looks like an email, use it as email too (some backends store email as userId)
-      if (userId && userId.includes('@')) {
-        if (!userEmail) {
-          userEmail = userId;
-          localStorage.setItem("userEmail", userEmail);
-        }
-        // Also treat it as a potential email for matching
-        console.log("UserId appears to be an email, using for matching:", userId);
-      }
-      
-      // Final fallback: use the login email from the form if available
-      if (!userEmail && userId && userId.includes('@')) {
+      if (userId && userId.includes('@') && !userEmail) {
         userEmail = userId;
+        console.log("UserId appears to be an email, using for matching:", userId);
       }
       
       console.log("=== FETCHING ORDERS ===");
@@ -259,13 +203,13 @@ const MyOrders = () => {
             <i className="bi bi-inbox" style={{ fontSize: "4rem", color: "#ccc" }}></i>
             <p className="mt-3">No orders found.</p>
             <p className="text-muted">
-              {!localStorage.getItem("userId") 
+              {!userId 
                 ? "Please log in to view your orders." 
                 : `You haven't placed any orders yet, or orders were placed with a different email.`}
             </p>
-            {localStorage.getItem("userEmail") && (
+            {userEmail && (
               <p className="text-muted small">
-                Logged in as: <strong>{localStorage.getItem("userEmail")}</strong>
+                Logged in as: <strong>{userEmail}</strong>
                 <br />
                 Orders are matched by the email used during checkout.
               </p>
