@@ -1,11 +1,19 @@
 // src/service/cartService.js
 import axiosInstance from "./axiosInstance";
+import { getUserIdFromToken } from "../utils/tokenUtils";
 
 export const addToCart = async (foodId, token) => {
   try {
+    // Extract userId from token to ensure backend uses userId, not email
+    const userId = getUserIdFromToken(token);
+    
+    if (!userId) {
+      throw new Error("Unable to extract user ID from token");
+    }
+
     await axiosInstance.post(
       "/api/cart",
-      { foodId },
+      { foodId, userId },
       { headers: { Authorization: `Bearer ${token}` } }
     );
   } catch (error) {
@@ -16,9 +24,16 @@ export const addToCart = async (foodId, token) => {
 
 export const removeQtyFromCart = async (foodId, token) => {
   try {
+    // Extract userId from token to ensure backend uses userId, not email
+    const userId = getUserIdFromToken(token);
+    
+    if (!userId) {
+      throw new Error("Unable to extract user ID from token");
+    }
+
     await axiosInstance.post(
       "/api/cart/remove",
-      { foodId },
+      { foodId, userId },
       { headers: { Authorization: `Bearer ${token}` } }
     );
   } catch (error) {
