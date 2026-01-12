@@ -1,23 +1,21 @@
 import axiosInstance from "./axiosInstance";
 
-const API_URL = "https://tasty-bities-backend-production.up.railway.app/api/foods";
-
 export const fetchFoodItems = async () => {
   try {
-    const response = await axiosInstance.get(API_URL);
+    const response = await axiosInstance.get("/foods");
     return response.data;
   } catch (error) {
-    console.error("Error fetching food items:", error);
+    console.error("Error fetching food items:", error.response || error.message);
     throw error;
   }
 };
 
 export const fetchFoodDetails = async (id) => {
   try {
-    const response = await axiosInstance.get(`${API_URL}/${id}`);
+    const response = await axiosInstance.get(`/foods/${id}`);
     return response.data;
   } catch (error) {
-    console.error("Error fetching food details:", error);
+    console.error("Error fetching food details:", error.response || error.message);
     throw error;
   }
 };

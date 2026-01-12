@@ -3,7 +3,6 @@ import { fetchFoodItems } from "../service/foodService";
 import { addToCart, removeQtyFromCart, getCartData } from "../service/cartService";
 import { toast } from "react-toastify";
 
-// Create store context
 export const StoreContext = createContext(null);
 
 export const StoreContextProvider = ({ children }) => {
@@ -12,7 +11,6 @@ export const StoreContextProvider = ({ children }) => {
   const [token, setToken] = useState("");
   const [loadingFood, setLoadingFood] = useState(true);
 
-  // ➕ Increase quantity
   const increaseQuantity = async (id) => {
     setQuantities((prev) => ({
       ...prev,
@@ -29,7 +27,6 @@ export const StoreContextProvider = ({ children }) => {
     }
   };
 
-  // ➖ Decrease quantity
   const decreaseQuantity = async (id) => {
     setQuantities((prev) => {
       const updated = { ...prev };
@@ -48,7 +45,6 @@ export const StoreContextProvider = ({ children }) => {
     }
   };
 
-  // 🗑️ Remove item completely from cart
   const removeFromCart = async (foodId) => {
     if (!token) return;
 
@@ -65,7 +61,6 @@ export const StoreContextProvider = ({ children }) => {
     }
   };
 
-  // 🔄 Load cart from backend
   const loadCartData = async (tk) => {
     try {
       const items = await getCartData(tk);
@@ -77,25 +72,22 @@ export const StoreContextProvider = ({ children }) => {
     }
   };
 
-  // 🚀 Initial load
   useEffect(() => {
     (async () => {
       setLoadingFood(true);
 
-      // Fetch food items
       try {
         const foods = await fetchFoodItems();
-        console.log("Fetched food items:", foods);
+        console.log("Fetched foods:", foods);
         setFoodList(Array.isArray(foods) ? foods : []);
       } catch (err) {
-        console.error("Error fetching food list:", err.response || err);
+        console.error("Error fetching food list:", err.response || err.message);
         toast.error("Failed to fetch the food list.");
         setFoodList([]);
       } finally {
         setLoadingFood(false);
       }
 
-      // Load token and cart
       const tk = localStorage.getItem("token");
       if (tk) {
         setToken(tk);
@@ -116,7 +108,7 @@ export const StoreContextProvider = ({ children }) => {
         setToken,
         setQuantities,
         loadCartData,
-        loadingFood, // expose loading state
+        loadingFood,
       }}
     >
       {children}
