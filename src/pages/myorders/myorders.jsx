@@ -7,23 +7,29 @@ import "./myorders.css";
 const MyOrders = () => {
   const { token } = useContext(StoreContext);
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const fetchOrders = async () => {
     if (!token) return;
     try {
+      setLoading(true);
       const userId = localStorage.getItem("userId");
       if (!userId) {
         console.error("Missing userId in localStorage; cannot fetch orders.");
+        setOrders([]);
         return;
       }
       const res = await axios.get(`https://tasty-bities-backend-production.up.railway.app/api/orders?userId=${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // Filter only PAID orders
-      const paidOrders = res.data.filter(order => order.paymentStatus === "PAID");
-      setOrders(paidOrders);
+      // Backend can return array or wrapped data; include all orders (do not over-filter)
+      const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setOrders(data);
     } catch (err) {
       console.error("Error fetching orders:", err);
+      setOrders([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -36,7 +42,9 @@ const MyOrders = () => {
     <div className="container">
       <div className="py-5 row justify-content-center">
         <h2 className="mb-4">My Orders (Paid)</h2>
-        {orders.length === 0 ? (
+        {loading ? (
+          <p>Loading orders...</p>
+        ) : orders.length === 0 ? (
           <p>No orders found.</p>
         ) : (
           <table className="table table-responsive">
