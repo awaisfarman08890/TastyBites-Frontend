@@ -36,7 +36,11 @@ const Login = () => {
         await loadCartData(response.token);
 
         toast.success("Login successful");
-        navigate("/");
+        
+        // Redirect to the saved path or home
+        const redirectPath = sessionStorage.getItem("redirectAfterLogin") || "/";
+        sessionStorage.removeItem("redirectAfterLogin");
+        navigate(redirectPath);
       } else {
         toast.error("Invalid email or password");
       }

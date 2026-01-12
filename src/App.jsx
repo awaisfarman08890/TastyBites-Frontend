@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 
 import Menubar from "./components/Menubar/Menubar";
@@ -28,9 +28,34 @@ import { StoreContext } from "./context/StoreContext";
 
 import "./App.css";
 
-const App = () => {
+// Protected Route component that checks both context and localStorage
+const ProtectedRoute = ({ children }) => {
   const { token } = useContext(StoreContext);
+  // Check both context token and localStorage as fallback
+  const isAuthenticated = token || localStorage.getItem("token");
+  
+  if (!isAuthenticated) {
+    // Save the current location so we can redirect back after login
+    const currentPath = window.location.pathname;
+    if (currentPath !== "/login") {
+      sessionStorage.setItem("redirectAfterLogin", currentPath);
+    }
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
 
+// Public Route component that redirects to home if already logged in
+const PublicRoute = ({ children }) => {
+  const { token } = useContext(StoreContext);
+  // Check both context token and localStorage as fallback
+  const isAuthenticated = token || localStorage.getItem("token");
+  
+  return isAuthenticated ? <Navigate to="/" replace /> : children;
+};
+
+const App = () => {
   return (
     <div className="page-container">
       <Menubar />
@@ -46,27 +71,47 @@ const App = () => {
 
           <Route
             path="/order"
-            element={token ? <PlaceOrder /> : <Login />}
+            element={
+              <ProtectedRoute>
+                <PlaceOrder />
+              </ProtectedRoute>
+            }
           />
 
           <Route
             path="/login"
-            element={token ? <Home /> : <Login />}
+            element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            }
           />
 
           <Route
             path="/register"
-            element={token ? <Home /> : <Register />}
+            element={
+              <PublicRoute>
+                <Register />
+              </PublicRoute>
+            }
           />
 
           <Route
             path="/myorders"
-            element={token ? <MyOrders /> : <Login />}
+            element={
+              <ProtectedRoute>
+                <MyOrders />
+              </ProtectedRoute>
+            }
           />
 
           <Route
             path="/pending-orders"
-            element={token ? <PendingOrders /> : <Login />}
+            element={
+              <ProtectedRoute>
+                <PendingOrders />
+              </ProtectedRoute>
+            }
           />
 
           <Route

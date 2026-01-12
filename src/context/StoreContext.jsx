@@ -9,8 +9,12 @@ export const StoreContext = createContext(null);
 export const StoreContextProvider = ({ children }) => {
   const [foodList, setFoodList] = useState([]);
   const [quantities, setQuantities] = useState({});
-  const [token, setToken] = useState("");
+  // Initialize token from localStorage immediately to prevent redirect on refresh
+  const [token, setToken] = useState(() => {
+    return localStorage.getItem("token") || "";
+  });
   const [loadingFood, setLoadingFood] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
 
   // ➕ Increase quantity
   const increaseQuantity = async (id) => {
@@ -95,10 +99,13 @@ export const StoreContextProvider = ({ children }) => {
         setLoadingFood(false);
       }
 
-      // Load token and cart
+      // Load token and cart (token already initialized, but sync with localStorage)
       const tk = localStorage.getItem("token");
-      if (tk) {
+      if (tk && tk !== token) {
         setToken(tk);
+        await loadCartData(tk);
+      } else if (tk) {
+        // Token already set, just load cart
         await loadCartData(tk);
       }
     })();
@@ -117,6 +124,7 @@ export const StoreContextProvider = ({ children }) => {
         setQuantities,
         loadCartData,
         loadingFood, // expose loading state
+        authLoading, // expose auth loading state
       }}
     >
       {children}
