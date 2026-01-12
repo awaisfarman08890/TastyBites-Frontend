@@ -63,14 +63,18 @@ const CheckoutSuccess = () => {
           
           // Check if it's a network error vs payment error
           if (err.response?.status === 404 || err.response?.status === 400) {
-            toast.error("Order verification failed. Please contact support with your order details.");
+            toast.warning("Order verification failed. Your order is saved. You can retry payment from Pending Orders.");
+            setTimeout(() => navigate("/pending-orders"), 2000);
           } else {
-            toast.error("Payment verification failed. Your order may still be processing. Please check your orders.");
+            toast.warning("Payment verification failed. Your order is saved. You can retry payment from Pending Orders.");
+            setTimeout(() => navigate("/pending-orders"), 2000);
           }
-          
-          setTimeout(() => navigate("/myorders"), 2000);
         }
       })();
+    } else if (success === "false" || !success) {
+      // Payment was cancelled or failed - order should still exist with PENDING status
+      toast.warning("Payment was cancelled. Your order is saved. You can retry payment from Pending Orders.");
+      setTimeout(() => navigate("/pending-orders"), 1500);
     } else {
       toast.error("Payment cancelled");
       navigate("/cart");

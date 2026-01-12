@@ -4,7 +4,7 @@ import { StoreContext } from "../../context/StoreContext";
 import axios from "axios";
 import axiosInstance from "../../service/axiosInstance";
 import { assets } from "../../assets/assets";
-import { getUserIdFromToken, getUserEmailFromToken } from "../../utils/tokenUtils";
+import { getUserIdFromToken } from "../../utils/tokenUtils";
 import "./myorders.css";
 
 const MyOrders = () => {

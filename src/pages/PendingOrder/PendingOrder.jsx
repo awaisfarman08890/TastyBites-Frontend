@@ -6,6 +6,7 @@ import {
   retryPayment,
 } from "../../service/pendingService";
 import { getUserIdFromToken } from "../../utils/tokenUtils";
+import axiosInstance from "../../service/axiosInstance";
 
 const PendingOrders = () => {
   const { token } = useContext(StoreContext);
@@ -23,10 +24,37 @@ const PendingOrders = () => {
 
       try {
         setLoading(true);
-        const data = await fetchPendingOrders(userId);
-        // Handle different response formats
-        const orders = Array.isArray(data) ? data : (data?.orders || data?.data || []);
-        setPendingOrders(orders);
+        // Try to fetch from pending orders endpoint first
+        try {
+          const data = await fetchPendingOrders(userId);
+          // Handle different response formats
+          const orders = Array.isArray(data) ? data : (data?.orders || data?.data || []);
+          setPendingOrders(orders);
+        } catch (pendingErr) {
+          // Fallback: fetch all orders and filter by PENDING status
+          console.log("Pending orders endpoint failed, fetching all orders:", pendingErr);
+          
+          const res = await axiosInstance.get("/api/orders/all", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          let allOrders = [];
+          if (Array.isArray(res.data)) {
+            allOrders = res.data;
+          } else if (res.data?.data && Array.isArray(res.data.data)) {
+            allOrders = res.data.data;
+          }
+          
+          // Filter by userId and PENDING payment status
+          const pendingOrders = allOrders.filter(order => {
+            const orderUserId = order.userId || order.user?.id || order.user?._id;
+            const userIdMatch = String(orderUserId).trim() === String(userId).trim();
+            const isPending = (order.paymentStatus || "").toUpperCase() === "PENDING";
+            return userIdMatch && isPending;
+          });
+          
+          setPendingOrders(pendingOrders);
+        }
       } catch (error) {
         console.error("Failed to load pending orders:", error);
         toast.error("Failed to load pending orders");

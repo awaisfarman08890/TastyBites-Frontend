@@ -49,25 +49,11 @@ const Register = () => {
 
       toast.success(registerMessage);
 
-      // 3️⃣ Auto-login after registration
-      const loginRes = await axios.post(
-        "https://tasty-bities-backend-production.up.railway.app/api/auth/login",
-        { email: data.email, password: data.password },
-        { headers: { "Content-Type": "application/json" } }
-      );
-
-      console.log("Login response:", loginRes.data); // Debug
-
-      if (loginRes.data?.token) {
-        localStorage.setItem("token", loginRes.data.token);
-        // Update context token immediately to prevent routing issues
-        setToken(loginRes.data.token);
-      }
-
-      // Small delay to ensure context updates before navigation
+      // Navigate to login page - user must log in to use the app
       setTimeout(() => {
-        navigate("/"); // redirect homepage / dashboard
-      }, 100);
+        navigate("/login");
+        toast.info("Please log in to continue.");
+      }, 1000);
     } catch (error) {
       console.log("Register/Login error:", error.response || error); // Debug
       toast.error(
