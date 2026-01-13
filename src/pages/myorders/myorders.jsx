@@ -150,7 +150,7 @@ const MyOrders = () => {
         </div>
         {loading ? (
           <div className="text-center py-4">
-            <div className="spinner-border text-tomato" role="status">
+            <div className="spinner-border" style={{ color: "tomato" }} role="status">
               <span className="visually-hidden">Loading...</span>
             </div>
             <p className="mt-3">Loading your orders...</p>
