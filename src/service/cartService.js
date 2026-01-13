@@ -65,7 +65,7 @@ export const removeItemFromCart = async (foodId, token) => {
     
     await axiosInstance.delete(`/api/cart/${foodId}`, {
        headers: { Authorization: `Bearer ${token}` },
-       data: { userId } // Some backends accept body in DELETE
+       params: { userId } // Pass as query param for better compatibility
     });
 
   } catch (error) {

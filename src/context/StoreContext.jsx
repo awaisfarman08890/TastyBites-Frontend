@@ -99,6 +99,8 @@ export const StoreContextProvider = ({ children }) => {
       // For now, we assume failure means we should warn user, but state is already cleared.
       // If we refresh, it might come back if backend didn't process.
       toast.error("Failed to remove item from cart database.");
+      // Revert optimistic update by reloading real data
+      await loadCartData(token);
     }
   };
 
