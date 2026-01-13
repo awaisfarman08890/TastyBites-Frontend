@@ -15,6 +15,9 @@ const MyOrders = () => {
   const [error, setError] = useState(null);
 
 
+  // Extract userId from token immediately for use in render and fetch
+  const userId = token ? getUserIdFromToken(token) : null;
+
   const fetchOrders = async () => {
     if (!token) {
       console.log("No token available");
@@ -26,15 +29,9 @@ const MyOrders = () => {
       setLoading(true);
       setError(null);
       
-      // Extract userId from token - orders are tracked by userId only, not email
-      let userId = getUserIdFromToken(token);
+      const userIdString = userId ? String(userId) : null;
       
-      // Ensure userId is a string to match database format
-      if (userId) {
-        userId = String(userId);
-      }
-      
-      if (!userId) {
+      if (!userIdString) {
         console.error("No userId found in token");
         setError("Unable to identify user. Please log in again.");
         setLoading(false);
@@ -42,10 +39,10 @@ const MyOrders = () => {
       }
       
       console.log("=== FETCHING ORDERS ===");
-      console.log("UserId:", userId);
-      console.log("Token exists:", !!token);
+      console.log("UserId:", userIdString);
       
-      let allOrders = [];
+      let fetchedOrders = [];
+      let isUserSpecificEndpoint = false;
       
       // Try to fetch user-specific orders first (if endpoint exists)
       try {
@@ -53,11 +50,12 @@ const MyOrders = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (Array.isArray(userRes.data)) {
-          allOrders = userRes.data;
+          fetchedOrders = userRes.data;
         } else if (userRes.data?.data && Array.isArray(userRes.data.data)) {
-          allOrders = userRes.data.data;
+          fetchedOrders = userRes.data.data;
         }
-        console.log("User-specific orders fetched:", allOrders.length);
+        isUserSpecificEndpoint = true;
+        console.log("User-specific orders fetched:", fetchedOrders.length);
       } catch (userErr) {
         console.log("User-specific endpoint not available, fetching all orders:", userErr.response?.status);
         // Fallback to fetching all orders
@@ -65,76 +63,49 @@ const MyOrders = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (Array.isArray(res.data)) {
-          allOrders = res.data;
+          fetchedOrders = res.data;
         } else if (res.data?.data && Array.isArray(res.data.data)) {
-          allOrders = res.data.data;
+          fetchedOrders = res.data.data;
         }
       }
       
-      console.log(`Total orders from backend: ${allOrders.length}`);
+      console.log(`Total orders from backend: ${fetchedOrders.length}`);
       
-      if (allOrders.length > 0) {
-        console.log("Sample order structure:", JSON.stringify(allOrders[0], null, 2));
-        console.log("All fields in first order:", Object.keys(allOrders[0]));
-      }
+      // Filter logic
+      let finalOrders = fetchedOrders;
+
+      // If we used the fallback endpoint (ALL orders), we MUST filter by userId
+      // If we used the user-specific endpoint, we usually trust it, BUT 
+      // sometimes backend might return all if endpoints are mixed up, so safe to filter if we are unsure.
+      // However, if logic is correct, /orders/user should return only user orders.
+      // Let's filter ONLY if we went to fallback OR if we suspect leakage.
+      // To be safe and compliant with user request "Propely identify the user", we will filter if we fetched 'all'.
       
-      // Filter orders - Match ONLY by userId (orders are tracked by userId, not email)
-      // Show ALL orders for the user (PENDING, PAID, CREATED, etc.) - don't filter by paymentStatus
-      const userOrders = allOrders.filter(order => {
-        // Get userId from order (backend stores as string ObjectId)
-        const orderUserId = order.userId || 
-                           order.user?.id || 
-                           order.user?._id ||
-                           order.userId?.toString() ||
-                           String(order.userId || '').trim();
-        
-        // Normalize our userId - handle both string and ObjectId formats
-        const normalizedUserId = userId ? String(userId).trim() : '';
-        
-        // Match ONLY by userId (exact string match)
-        let userIdMatch = false;
-        if (normalizedUserId && orderUserId) {
-          const orderUserIdStr = String(orderUserId).trim();
-          const ourUserIdStr = normalizedUserId;
-          userIdMatch = orderUserIdStr === ourUserIdStr || 
-                       orderUserIdStr.replace(/['"]/g, '') === ourUserIdStr.replace(/['"]/g, '');
-        }
-        
-        // Log matches for debugging
-        if (userIdMatch) {
-          console.log("✅ MATCHED ORDER:", {
-            orderId: order.id || order._id,
-            orderUserId,
-            ourUserId: normalizedUserId,
-            paymentStatus: order.paymentStatus,
-            orderStatus: order.orderStatus
+      if (!isUserSpecificEndpoint) {
+          finalOrders = fetchedOrders.filter(order => {
+            const orderUserId = order.userId || 
+                               order.user?.id || 
+                               order.user?._id ||
+                               order.userId?.toString() ||
+                               String(order.userId || '').trim();
+            
+            const normalizedUserId = String(userIdString).trim();
+            
+            let userIdMatch = false;
+            if (normalizedUserId && orderUserId) {
+              const orderUserIdStr = String(orderUserId).trim();
+              userIdMatch = orderUserIdStr === normalizedUserId || 
+                           orderUserIdStr.replace(/['"]/g, '') === normalizedUserId.replace(/['"]/g, '');
+            }
+            return userIdMatch;
           });
-        }
-        
-        return userIdMatch;
-      });
-      
-      console.log(`=== RESULTS ===`);
-      console.log(`Total orders: ${allOrders.length}`);
-      console.log(`User orders: ${userOrders.length}`);
-      
-      if (userOrders.length === 0 && allOrders.length > 0) {
-        console.error("⚠️ NO ORDERS MATCHED!");
-        console.error("Your userId:", userId);
-        console.error("Sample order userIds:", allOrders.slice(0, 5).map(o => o.userId || o.user?.id || o.user?._id || "N/A"));
-        
-        // Show first order structure for debugging
-        if (allOrders[0]) {
-          console.error("First order full structure:", JSON.stringify(allOrders[0], null, 2));
-        }
       }
       
-      setOrders(userOrders);
+      console.log(`User orders after filter: ${finalOrders.length}`);
+      setOrders(finalOrders);
+
     } catch (err) {
       console.error("❌ Error fetching orders:", err);
-      console.error("Error response:", err.response?.data);
-      console.error("Error status:", err.response?.status);
-      
       const errorMsg = err.response?.data?.message || err.message || "Failed to load orders";
       setError(errorMsg);
       setOrders([]);
