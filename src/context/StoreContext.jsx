@@ -14,6 +14,7 @@ export const StoreContextProvider = ({ children }) => {
     return localStorage.getItem("token") || "";
   });
   const [loadingFood, setLoadingFood] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
   // Lock to prevent double-add requests (Race Condition Fix)
   const addingToCart = useRef({});
 
