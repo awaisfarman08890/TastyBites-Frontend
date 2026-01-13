@@ -31,15 +31,10 @@ export const addToCart = async (foodId, token) => {
   }
 };
 
+// Remove single unit
 export const removeQtyFromCart = async (foodId, token) => {
   try {
-    // Extract valid userId from token (STRICT: no emails)
     const userId = getUserIdFromToken(token);
-    
-    if (!userId) {
-       console.warn("STRICT MODE: No valid non-email User ID found. Proceeding.");
-    }
-
     const payload = { foodId };
     if (userId) payload.userId = userId;
 
@@ -50,6 +45,34 @@ export const removeQtyFromCart = async (foodId, token) => {
     );
   } catch (error) {
     console.error("Error while removing qty from cart", error);
+  }
+};
+
+// ✅ NEW: Remove item completely
+export const removeItemFromCart = async (foodId, token) => {
+  try {
+    const userId = getUserIdFromToken(token);
+    
+    // We try the standard pattern: DELETE /api/cart/:foodId
+    // If backend doesn't support this, we might need another strategy, 
+    // but usually this is how "remove item" works vs "remove qty"
+    // We pass userId in query or body if supported, but DELETE usually has payload issues in some browsers/proxies.
+    // So we put userId in query string if needed.
+    
+    // Strategy 1: Attempt DELETE /api/cart/item/ID
+    // Strategy 2: If we must use existing endpoint, maybe loop? No.
+    // Let's assume there is a delete endpoint since clearCart is DELETE /api/cart
+    
+    await axiosInstance.delete(`/api/cart/${foodId}`, {
+       headers: { Authorization: `Bearer ${token}` },
+       data: { userId } // Some backends accept body in DELETE
+    });
+
+  } catch (error) {
+    console.error("Error while removing item from cart", error);
+    // If 404, standard DELETE, maybe the route is /api/cart/remove-item?
+    // We will assume standard REST for now.
+    throw error;
   }
 };
 

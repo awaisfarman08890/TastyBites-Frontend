@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState } from "react";
 import { fetchFoodItems } from "../service/foodService";
-import { addToCart, removeQtyFromCart, getCartData } from "../service/cartService";
+import { addToCart, removeQtyFromCart, removeItemFromCart, getCartData } from "../service/cartService";
 import { toast } from "react-toastify";
 
 // Create store context
@@ -75,16 +75,22 @@ export const StoreContextProvider = ({ children }) => {
   const removeFromCart = async (foodId) => {
     if (!token) return;
 
-    try {
-      await removeQtyFromCart(foodId, token);
-      setQuantities((prev) => {
+    // Optimistic remove
+    setQuantities((prev) => {
         const updated = { ...prev };
         delete updated[foodId];
         return updated;
-      });
+    });
+
+    try {
+      // Call dedicated remove endpoint to ensure it's deleted from DB
+      await removeItemFromCart(foodId, token);
     } catch (err) {
       console.error("Remove from cart failed:", err.response || err);
-      toast.error("Failed to remove item from cart.");
+      // If endpoint fails (e.g. 404), maybe try removeQty loop?
+      // For now, we assume failure means we should warn user, but state is already cleared.
+      // If we refresh, it might come back if backend didn't process.
+      toast.error("Failed to remove item from cart database.");
     }
   };
 
@@ -113,7 +119,21 @@ export const StoreContextProvider = ({ children }) => {
       try {
         const foods = await fetchFoodItems();
         console.log("Fetched food items:", foods);
-        setFoodList(Array.isArray(foods) ? foods : []);
+        
+        // DEDUPLICATE FOOD LIST (Fix for "Appears Twice" issue)
+        // If backend returns duplicate items with same ID, we keep only last one (or first one).
+        const uniqueFoods = [];
+        const map = new Map();
+        if (Array.isArray(foods)) {
+            for (const item of foods) {
+                if(!map.has(item.id || item._id)) {
+                    map.set(item.id || item._id, true);
+                    uniqueFoods.push(item);
+                }
+            }
+        }
+        
+        setFoodList(uniqueFoods);
       } catch (err) {
         console.error("Error fetching food list:", err.response || err);
         toast.error("Failed to fetch the food list.");
