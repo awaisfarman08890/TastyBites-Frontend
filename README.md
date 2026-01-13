@@ -1,54 +1,20 @@
-# Tasty Bites - Online Food Delivery
+# 🍔 Tasty Bites - Frontend
 
-A React-based food delivery application built with Vite.
+Welcome to **Tasty Bites**! This is the **frontend** of our delicious food ordering app, built for a smooth and tasty user experience.  
 
-## Environment Variables
+## 🌟 Features
+- Browse and search for food items 🍕🍰🥗
+- Add items to cart 🛒
+- Place orders with Stripe payment 💳
+- View order history 📜
+- Responsive and user-friendly design 📱💻
+- Smooth animations and interactive UI ✨
 
-Before deploying to Vercel, make sure to set the following environment variables in your Vercel project settings:
-
-- `VITE_STRIPE_PUBLIC_KEY` - Your Stripe public key (test or production)
-
-## Deployment to Vercel
-
-1. Push your code to GitHub
-2. Import your repository to Vercel
-3. Set the environment variables in Vercel project settings
-4. Vercel will automatically detect the Vite framework and deploy
-
-### Vercel Configuration
-
-The `vercel.json` file is configured to:
-- Handle client-side routing (React Router)
-- Serve the correct build output from `dist` folder
-- Configure proper caching headers for assets
-
-## Local Development
-
-```bash
-npm install
-npm run dev
-```
-
-## Build
-
-```bash
-npm run build
-```
-
-The build output will be in the `dist` folder.
-
-## Troubleshooting
-
-### 404 Errors on Vercel
-
-If you're getting 404 errors:
-1. Make sure `vercel.json` exists in the root directory
-2. Verify the build output directory is `dist`
-3. Check that all routes are handled by React Router
-
-### 403 Errors
-
-If you're getting 403 errors:
-1. Check your API endpoints are accessible
-2. Verify CORS settings on your backend
-3. Check authentication tokens are being sent correctly
+## 🛠 Tech Stack
+- React.js
+- Vite
+- Axios (for API calls)
+- React Router
+- Redux / Context API 
+- React Toastify (for notifications)
+- CSS / SCSS
