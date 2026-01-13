@@ -51,27 +51,15 @@ export const removeQtyFromCart = async (foodId, token) => {
 // ✅ NEW: Remove item completely
 export const removeItemFromCart = async (foodId, token) => {
   try {
-    const userId = getUserIdFromToken(token);
-    
-    // We try the standard pattern: DELETE /api/cart/:foodId
-    // If backend doesn't support this, we might need another strategy, 
-    // but usually this is how "remove item" works vs "remove qty"
-    // We pass userId in query or body if supported, but DELETE usually has payload issues in some browsers/proxies.
-    // So we put userId in query string if needed.
-    
-    // Strategy 1: Attempt DELETE /api/cart/item/ID
-    // Strategy 2: If we must use existing endpoint, maybe loop? No.
-    // Let's assume there is a delete endpoint since clearCart is DELETE /api/cart
+    // We rely solely on the token for user identification to avoid 403 Forbidden
+    // (Backend likely rejects explicit userId injection or body parsing issues in DELETE)
     
     await axiosInstance.delete(`/api/cart/${foodId}`, {
-       headers: { Authorization: `Bearer ${token}` },
-       params: { userId } // Pass as query param for better compatibility
+       headers: { Authorization: `Bearer ${token}` }
     });
 
   } catch (error) {
     console.error("Error while removing item from cart", error);
-    // If 404, standard DELETE, maybe the route is /api/cart/remove-item?
-    // We will assume standard REST for now.
     throw error;
   }
 };
