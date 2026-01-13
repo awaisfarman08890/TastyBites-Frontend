@@ -45,7 +45,10 @@ export const getUserIdFromToken = (token) => {
     decoded.user?.id,
     decoded.user?._id,
     decoded._id,
-    decoded.sub
+    decoded.sub,
+    decoded.user_id, // snake_case
+    decoded.uid,     // common abbreviation
+    decoded.identity // sometimes used
   ];
   
   // Helper to check if a value is an email
