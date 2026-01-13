@@ -10,7 +10,7 @@ const FoodItem = ({ name, description, imageUrl, price, id }) => {
     <div className="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 d-flex justify-content-center">
       <div className="card food-card shadow-sm">
         <Link to={`/food/${id}`} className="food-img-link">
-          <img src={imageUrl} alt={name} className="food-img" />
+          <img src={imageUrl} alt={name} className="food-img" loading="lazy" />
         </Link>
         <div className="card-body">
           <h5 className="card-title">{name}</h5>

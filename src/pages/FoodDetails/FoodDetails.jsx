@@ -51,6 +51,7 @@ const FoodDetails = () => {
                 className="card-img-top mb-5 mb-md-0"
                 src={data.imageUrl}
                 alt={data.name}
+                loading="lazy"
               />
             )}
           </div>

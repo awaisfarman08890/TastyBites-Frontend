@@ -59,7 +59,7 @@ const Cart = () => {
                                 {cartItems.map(food => (
                                     <div key={food.id} className="row cart-item mb-3">
                                         <div className="col-md-3">
-                                            <img src={food.imageUrl} alt={food.name} className="img-fluid rounded" width={100}/>
+                                            <img src={food.imageUrl} alt={food.name} className="img-fluid rounded" width={100} loading="lazy" />
                                         </div>
                                         <div className="col-md-5">
                                             <h5 className="card-title">{food.name}</h5>
