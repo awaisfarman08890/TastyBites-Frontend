@@ -4,64 +4,47 @@ import { getUserEmailFromToken } from "../utils/tokenUtils";
 
 export const addToCart = async (foodId, token) => {
   try {
-    // Explicitly send the email as userId to help the backend 'upsert' rather than duplicate
     const userId = getUserEmailFromToken(token);
-    console.log("Adding to cart: foodId:", foodId, "userId:", userId);
-    
-    const response = await axiosInstance.post(
-      "/api/cart",
-      { foodId, userId },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    console.log("Add to cart response:", response.data);
+    // Explicitly send userId in body for POST
+    await axiosInstance.post("/api/cart", { foodId, userId });
   } catch (error) {
-    console.error("Error adding food:", error.response?.data || error.message);
+    console.error("Error adding to cart:", error);
     throw error;
   }
 };
 
-// Remove single unit
+// Remove single unit from cart
 export const removeQtyFromCart = async (foodId, token) => {
   try {
     const userId = getUserEmailFromToken(token);
-    await axiosInstance.post(
-      "/api/cart/remove",
-      { foodId, userId },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    // Explicitly send userId in body for POST
+    await axiosInstance.post("/api/cart/remove", { foodId, userId });
   } catch (error) {
-    console.error("Error while removing qty from cart", error);
+    console.error("Error removing unit:", error);
+    throw error;
   }
 };
 
-// ✅ FIX: Using params to avoid 403 and passing userId explicitly
+// Remove item completely
 export const removeItemFromCart = async (foodId, token) => {
   try {
     const userId = getUserEmailFromToken(token);
-    
-    // We pass userId as a query parameter. This is compatible with most Spring Boot 
-    // @DeleteMapping @RequestParam setups and avoids 403 body-stripping issues.
+    // Use DELETE with userId as query param to avoid 403 body issues
     await axiosInstance.delete(`/api/cart/${foodId}`, {
-       headers: { Authorization: `Bearer ${token}` },
        params: { userId } 
     });
-
   } catch (error) {
-    console.error("Error while removing item from cart:", error.response?.data || error.message);
+    console.error("Error removing item:", error);
     throw error;
   }
 };
 
 export const getCartData = async (token) => {
   try {
-    const response = await axiosInstance.get("/api/cart", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    // Handle both single cart object and array of carts (merging items if duplicates exist)
+    const response = await axiosInstance.get("/api/cart");
+    // Merging items if the backend returns multiple documents (robust check)
     const data = response.data;
     if (Array.isArray(data)) {
-      console.warn("Backend returned multiple cart documents. Merging items...");
       const mergedItems = {};
       data.forEach(cart => {
         if (cart.items) {
@@ -72,23 +55,23 @@ export const getCartData = async (token) => {
       });
       return mergedItems;
     }
-
-    // backend returns CartResponse { items: { foodId: qty } }
     return data?.items || {};
   } catch (error) {
-    console.error("Error while fetching cart data", error);
+    console.error("Error fetching cart data:", error);
     return {};
   }
 };
 
-// ✅ NEW: Clear entire cart function
+// Clear entire cart
 export const clearCart = async (token) => {
   try {
+    const userId = getUserEmailFromToken(token);
+    // Always send userId as query param for DELETE
     await axiosInstance.delete("/api/cart", {
-      headers: { Authorization: `Bearer ${token}` },
+      params: { userId }
     });
   } catch (error) {
-    console.error("Error while clearing cart", error);
+    console.error("Error clearing cart:", error);
     throw error;
   }
 };
