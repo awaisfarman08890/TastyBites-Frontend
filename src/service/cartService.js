@@ -42,10 +42,31 @@ export const removeItemFromCart = async (foodId, token) => {
 export const getCartData = async (token) => {
   try {   
     const userId = getUserEmailFromToken(token);
+    if (!userId) return {};
+
+    console.log(`Fetching cart items for: ${userId}`);
     const response = await axiosInstance.get(`/api/cart/${userId}`);
-    return response.data?.items || {};
+    
+    // LOG THE ACTUAL RESPONSE so we can see what the backend is doing
+    console.log("Raw cart response from server:", response.data);
+
+    // Robust extraction: Handle single object, array, or direct items map
+    const data = response.data;
+    
+    if (Array.isArray(data) && data.length > 0) {
+        return data[0].items || {};
+    }
+    
+    if (data && typeof data === 'object') {
+        // If it's already the items map {product: qty}
+        if (!data.items && !data.userId && Object.keys(data).length > 0) return data;
+        // Otherwise return the items field
+        return data.items || {};
+    }
+
+    return {};
   } catch (error) {
-    console.error("Error fetching cart data:", error);
+    console.error("Cart fetch error:", error.response?.status, error.response?.data || error.message);
     return {};
   }
 };
