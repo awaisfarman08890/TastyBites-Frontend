@@ -66,8 +66,11 @@ const MyOrders = () => {
 
       console.log("Filtering orders for UserID:", userIdString, "or Email:", userEmailVal);
 
-      // Ultra-robust Filtering:
       const userOrders = allOrders.filter(order => {
+        // 0. EXCLUDE PENDING ORDERS FIRST
+        // These belong in PendingOrders page only.
+        if ((order.paymentStatus || "").toUpperCase() === "PENDING") return false;
+
         // Get all possible identifiers from order
         const orderUserId = order.userId || order.user?.id || order.user?._id || order.userId?.toString();
         const orderEmail = order.email || order.user?.email || order.userEmail;
@@ -84,13 +87,6 @@ const MyOrders = () => {
              if (String(orderEmail).toLowerCase() === String(userEmailVal).toLowerCase()) return true;
         }
 
-        // 3. Last Resort: If the order was just created in this session, we might not have ID sync yet.
-        // But if they are logged in, they should match.
-        
-        // 3. EXCLUDE PENDING ORDERS
-        // User requested that "Retry Payment" orders (Pending) should NOT appear here, but only in PendingOrders page.
-        if ((order.paymentStatus || "").toUpperCase() === "PENDING") return false;
-        
         return false;
       });
       
