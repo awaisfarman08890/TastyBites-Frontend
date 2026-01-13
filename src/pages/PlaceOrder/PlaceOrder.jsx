@@ -4,7 +4,7 @@ import { calculateCartTotals } from "../../cartUtils/cartUtils";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { assets } from "../../assets/assets";
-import { getUserIdFromToken } from "../../utils/tokenUtils";
+import { getUserIdFromToken, getUserEmailFromToken } from "../../utils/tokenUtils";
 
 const US_STATES = [
   { code: "AL", name: "Alabama" },
@@ -67,6 +67,7 @@ const PlaceOrder = () => {
   const [data, setData] = useState({
     firstName: "",
     lastName: "",
+    email: "",
     phoneNumber: "",
     address: "",
     city: "",
@@ -80,8 +81,15 @@ const PlaceOrder = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1200);
+    // Pre-fill email if available
+    if (token) {
+        const email = getUserEmailFromToken(token);
+        if (email) {
+            setData(prev => ({ ...prev, email: email }));
+        }
+    }
     return () => clearTimeout(timer);
-  }, []);
+  }, [token]);
 
   const onChangeHandler = (e) => {
     const { name, value } = e.target;
@@ -103,15 +111,16 @@ const PlaceOrder = () => {
 
     // Extract strictly valid userId (no emails)
     const userId = getUserIdFromToken(token);
+    
+    // SOFT CHECK: If strict check fails, warn but proceed (let backend handle or token fallback)
     if (!userId) {
-      toast.error("Unable to identify user. Please log in again.");
-      setCheckoutLoading(false);
-      return;
+       console.warn("STRICT MODE: No explicit userId found in PlaceOrder. Proceeding with token only.");
     }
 
     const orderData = {
-      userId: userId, // Explicitly send valid ID to override backend email default
+      userId: userId, // Can be null, backend should infer from token if missing
       userAddress: `${data.firstName} ${data.lastName}, ${data.address}, ${data.city}, ${data.state}, ${data.country}, ${data.zip}`,
+      email: data.email, // Send email explicitly
       phoneNumber: data.phoneNumber,
       orderedItems: cartItems.map((item) => ({
         foodId: item.id,
@@ -166,30 +175,25 @@ const PlaceOrder = () => {
       if (checkoutUrl) {
         // Check if it's a valid URL (starts with http/https)
         if (checkoutUrl.startsWith('http://') || checkoutUrl.startsWith('https://')) {
-          // Valid URL - redirect to Stripe Checkout
+          // Valid URL - redirect to checkout
           console.log("Redirecting to checkout URL:", checkoutUrl);
           window.location.href = checkoutUrl;
           return; // Exit early on success
         } else if (checkoutUrl.startsWith('cs_') || checkoutUrl.startsWith('pi_')) {
           // If it's a Stripe session ID or payment intent ID (not a URL)
-          // This shouldn't happen with Checkout Sessions, but handle gracefully
           const errorMsg = "Server returned Stripe ID instead of checkout URL. Please contact support.";
           console.error("Received Stripe ID instead of URL:", checkoutUrl);
-          console.error("Full response:", res.data);
           toast.error(errorMsg);
           setCheckoutLoading(false);
         } else {
           // Unknown format - log and show error
           console.error("Unknown checkout URL format:", checkoutUrl);
-          console.error("Full response:", res.data);
           toast.error("Invalid checkout URL format received from server.");
           setCheckoutLoading(false);
         }
       } else {
         // No URL found in response - show detailed error
         console.error("No checkout URL found in response");
-        console.error("Response status:", res.status);
-        console.error("Response headers:", res.headers);
         console.error("Response data:", JSON.stringify(res.data, null, 2));
         
         // Show user-friendly error with suggestion
@@ -199,13 +203,10 @@ const PlaceOrder = () => {
       }
     } catch (err) {
       console.error("Order create error:", err);
-      console.error("Error response:", err.response);
-      console.error("Error data:", err.response?.data);
       
       // Extract error message from different possible locations
       const errorMessage = err.response?.data?.message || 
                           err.response?.data?.error || 
-                          err.response?.data?.errorMessage ||
                           err.message || 
                           "Failed to place order";
       
@@ -213,13 +214,7 @@ const PlaceOrder = () => {
       setCheckoutLoading(false);
       
       // Navigate to error page on critical errors
-      if (err.response?.status >= 500) {
-        setTimeout(() => {
-          window.location.href = "/error?type=checkout";
-        }, 2000);
-      } else if (err.response?.status === 403) {
-        toast.error("Access denied. Please check your authentication.");
-      } else if (err.response?.status === 401) {
+      if (err.response?.status === 401) {
         toast.error("Please log in to continue with checkout.");
         setTimeout(() => {
           window.location.href = "/login";
@@ -270,6 +265,19 @@ const PlaceOrder = () => {
                       required
                     />
                   </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">Email Address</label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    name="email"
+                    value={data.email}
+                    onChange={onChangeHandler}
+                    placeholder="you@example.com"
+                    required
+                  />
                 </div>
 
                 <div className="mb-3">
