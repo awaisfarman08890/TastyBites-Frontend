@@ -21,11 +21,16 @@ export const StoreContextProvider = ({ children }) => {
   // ➕ Increase quantity
   const increaseQuantity = async (id) => {
     if (!token) {
-      toast.error("Please log in to add items to cart.");
+      toast.error("Please log in.");
       return;
     }
 
-    // UPDATE UI IMMEDIATELY
+    // Ultra-fast guard (250ms) to prevent duplicate requests without blocking the user
+    if (addingToCart.current[id]) return;
+    addingToCart.current[id] = true;
+    setTimeout(() => { addingToCart.current[id] = false; }, 250);
+
+    // Update UI INSTANTLY
     setQuantities((prev) => ({
       ...prev,
       [id]: (prev[id] || 0) + 1,
@@ -34,20 +39,20 @@ export const StoreContextProvider = ({ children }) => {
     try {
       await addToCart(id, token);
     } catch (err) {
-      // Revert UI only if server fails
       setQuantities((prev) => {
         const updated = { ...prev };
         if (updated[id] > 1) updated[id]--;
         else delete updated[id];
         return updated;
       });
-      console.error("Cart increase failed:", err);
     }
   };
 
   // ➖ Decrease quantity
   const decreaseQuantity = async (id) => {
-    if (!token) return;
+    if (!token || addingToCart.current[id]) return;
+    addingToCart.current[id] = true;
+    setTimeout(() => { addingToCart.current[id] = false; }, 250);
 
     setQuantities((prev) => {
       const updated = { ...prev };
@@ -59,17 +64,16 @@ export const StoreContextProvider = ({ children }) => {
     try {
       await removeQtyFromCart(id, token);
     } catch (err) {
-      console.error("Cart decrease failed:", err);
-      // Re-sync with server state on error
       await loadCartData(token);
     }
   };
 
-  // 🗑️ Remove item completely from cart
+  // 🗑️ Remove item completely
   const removeFromCart = async (foodId) => {
-    if (!token) return;
+    if (!token || addingToCart.current[foodId]) return;
+    addingToCart.current[foodId] = true;
+    setTimeout(() => { addingToCart.current[foodId] = false; }, 250);
 
-    // Optimistic remove
     setQuantities((prev) => {
         const updated = { ...prev };
         delete updated[foodId];
@@ -79,10 +83,7 @@ export const StoreContextProvider = ({ children }) => {
     try {
       await removeItemFromCart(foodId, token);
     } catch (err) {
-      console.error("Item removal failed:", err);
-      const errMsg = err.response?.data?.message || "Server error. Could not delete.";
-      toast.error(`Remove failed: ${errMsg}`);
-      // Re-sync with server state on error
+      toast.error("Could not remove item.");
       await loadCartData(token);
     }
   };
