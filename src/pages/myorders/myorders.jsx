@@ -1,10 +1,10 @@
 import { useContext, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { StoreContext } from "../../context/StoreContext";
-import axios from "axios";
 import axiosInstance from "../../service/axiosInstance";
 import { assets } from "../../assets/assets";
 import { getUserIdFromToken } from "../../utils/tokenUtils";
+import { toast } from "react-toastify";
 import "./myorders.css";
 
 const MyOrders = () => {
@@ -14,13 +14,11 @@ const MyOrders = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-
-  // Extract userId from token immediately for use in render and fetch
+  // Extract userId from token immediately
   const userId = token ? getUserIdFromToken(token) : null;
 
   const fetchOrders = async () => {
     if (!token) {
-      console.log("No token available");
       setError("Please log in to view your orders");
       return;
     }
@@ -29,83 +27,49 @@ const MyOrders = () => {
       setLoading(true);
       setError(null);
       
-      const userIdString = userId ? String(userId) : null;
+      const userIdString = userId ? String(userId).trim() : null;
       
       if (!userIdString) {
-        console.error("No userId found in token");
+        console.error("No valid userId found in token");
         setError("Unable to identify user. Please log in again.");
         setLoading(false);
         return;
       }
       
-      console.log("=== FETCHING ORDERS ===");
-      console.log("UserId:", userIdString);
-      
-      let fetchedOrders = [];
-      let isUserSpecificEndpoint = false;
-      
-      // Try to fetch user-specific orders first (if endpoint exists)
-      try {
-        const userRes = await axiosInstance.get(`/api/orders/user`, {
+      // Fetch all orders
+      const res = await axiosInstance.get(`/api/orders/all`, {
           headers: { Authorization: `Bearer ${token}` }
-        });
-        if (Array.isArray(userRes.data)) {
-          fetchedOrders = userRes.data;
-        } else if (userRes.data?.data && Array.isArray(userRes.data.data)) {
-          fetchedOrders = userRes.data.data;
-        }
-        isUserSpecificEndpoint = true;
-        console.log("User-specific orders fetched:", fetchedOrders.length);
-      } catch (userErr) {
-        console.log("User-specific endpoint not available, fetching all orders:", userErr.response?.status);
-        // Fallback to fetching all orders
-        const res = await axiosInstance.get(`/api/orders/all`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (Array.isArray(res.data)) {
-          fetchedOrders = res.data;
-        } else if (res.data?.data && Array.isArray(res.data.data)) {
-          fetchedOrders = res.data.data;
-        }
-      }
-      
-      console.log(`Total orders from backend: ${fetchedOrders.length}`);
-      
-      // Filter logic
-      let finalOrders = fetchedOrders;
+      });
 
-      // If we used the fallback endpoint (ALL orders), we MUST filter by userId
-      // If we used the user-specific endpoint, we usually trust it, BUT 
-      // sometimes backend might return all if endpoints are mixed up, so safe to filter if we are unsure.
-      // However, if logic is correct, /orders/user should return only user orders.
-      // Let's filter ONLY if we went to fallback OR if we suspect leakage.
-      // To be safe and compliant with user request "Propely identify the user", we will filter if we fetched 'all'.
-      
-      if (!isUserSpecificEndpoint) {
-          finalOrders = fetchedOrders.filter(order => {
-            const orderUserId = order.userId || 
-                               order.user?.id || 
-                               order.user?._id ||
-                               order.userId?.toString() ||
-                               String(order.userId || '').trim();
-            
-            const normalizedUserId = String(userIdString).trim();
-            
-            let userIdMatch = false;
-            if (normalizedUserId && orderUserId) {
-              const orderUserIdStr = String(orderUserId).trim();
-              userIdMatch = orderUserIdStr === normalizedUserId || 
-                           orderUserIdStr.replace(/['"]/g, '') === normalizedUserId.replace(/['"]/g, '');
-            }
-            return userIdMatch;
-          });
+      let allOrders = [];
+      if (Array.isArray(res.data)) {
+        allOrders = res.data;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        allOrders = res.data.data;
       }
-      
-      console.log(`User orders after filter: ${finalOrders.length}`);
-      setOrders(finalOrders);
 
+      // STRICT Filtering: Match ONLY by userId (Exact Match)
+      // Show ALL orders regardless of status (PENDING, PAID, FAILED)
+      const userOrders = allOrders.filter(order => {
+        const orderUserId = order.userId || 
+                           order.user?.id || 
+                           order.user?._id ||
+                           order.userId?.toString();
+
+        if (!orderUserId) return false;
+
+        const orderUserIdStr = String(orderUserId).trim();
+        // Strict comparison of strings
+        return orderUserIdStr === userIdString || 
+               orderUserIdStr.replace(/['"]/g, '') === userIdString.replace(/['"]/g, '');
+      });
+      
+      // Sort by date (newest first) if createdAt exists
+      userOrders.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      
+      setOrders(userOrders);
     } catch (err) {
-      console.error("❌ Error fetching orders:", err);
+      console.error("Error fetching orders:", err);
       const errorMsg = err.response?.data?.message || err.message || "Failed to load orders";
       setError(errorMsg);
       setOrders([]);
@@ -114,9 +78,26 @@ const MyOrders = () => {
     }
   };
 
+  const handleRetryPayment = async (orderId) => {
+      try {
+          const res = await axiosInstance.post('/api/orders/retry-payment', { orderId }, {
+              headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (res.data?.url) {
+              window.location.href = res.data.url;
+          } else {
+              toast.error("Unable to retry payment. Please try placing a new order.");
+          }
+      } catch (err) {
+          console.error("Retry payment error:", err);
+          toast.error("Failed to initiate payment retry.");
+      }
+  };
+
   useEffect(() => {
     fetchOrders();
-  }, [token, location.key]); // Refresh when token changes or when navigating to this page
+  }, [token, location.key]);
 
   return (
     <div className="container">
@@ -212,11 +193,19 @@ const MyOrders = () => {
                     </span>
                   </td>
                   <td>
+                    {order.paymentStatus === "PENDING" && (
+                        <button
+                          className="btn btn-sm btn-tomato me-2"
+                          onClick={() => handleRetryPayment(order.id || order._id)}
+                        >
+                          Retry Payment
+                        </button>
+                    )}
                     <button
                       className="btn btn-sm btn-tt"
-                      onClick={fetchOrders} // refresh orders
+                      onClick={fetchOrders}
                     >
-                      <i className="bi bi-arrow-clockwise"></i> Refresh
+                      <i className="bi bi-arrow-clockwise"></i>
                     </button>
                   </td>
                 </tr>
