@@ -101,8 +101,16 @@ const PlaceOrder = () => {
     
     setCheckoutLoading(true);
 
+    // Extract strictly valid userId (no emails)
+    const userId = getUserIdFromToken(token);
+    if (!userId) {
+      toast.error("Unable to identify user. Please log in again.");
+      setCheckoutLoading(false);
+      return;
+    }
+
     const orderData = {
-      // userId removed - backend must extract from token
+      userId: userId, // Explicitly send valid ID to override backend email default
       userAddress: `${data.firstName} ${data.lastName}, ${data.address}, ${data.city}, ${data.state}, ${data.country}, ${data.zip}`,
       phoneNumber: data.phoneNumber,
       orderedItems: cartItems.map((item) => ({
