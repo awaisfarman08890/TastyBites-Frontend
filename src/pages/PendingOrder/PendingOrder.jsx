@@ -45,12 +45,42 @@ const PendingOrders = () => {
             allOrders = res.data.data;
           }
           
-          // Filter by userId and PENDING payment status
+          // Backported robust filtering from MyOrders
+          const userIdString = userId ? String(userId).trim() : null;
+          
+          // Decode email from token for fallback filter
+          const tokenParts = token ? token.split('.') : [];
+          let userEmailVal = null;
+          if (tokenParts.length > 1) {
+             try {
+                 const payload = JSON.parse(atob(tokenParts[1].replace(/-/g, '+').replace(/_/g, '/')));
+                 userEmailVal = payload.email || payload.sub || payload.userEmail;
+                 if (userEmailVal && !userEmailVal.includes('@')) userEmailVal = null;
+             } catch(e) {}
+          }
+          
+          // Filter by userId/Email AND PENDING payment status
           const pendingOrders = allOrders.filter(order => {
-            const orderUserId = order.userId || order.user?.id || order.user?._id;
-            const userIdMatch = String(orderUserId).trim() === String(userId).trim();
+            const orderUserId = order.userId || order.user?.id || order.user?._id || order.userId?.toString();
+            const orderEmail = order.email || order.user?.email || order.userEmail;
+            
+            // Check status first
             const isPending = (order.paymentStatus || "").toUpperCase() === "PENDING";
-            return userIdMatch && isPending;
+            if (!isPending) return false;
+
+            // 1. Match by ID 
+            if (orderUserId && userIdString) {
+                const oId = String(orderUserId).trim();
+                const uId = String(userIdString).trim();
+                if (oId === uId || oId.replace(/['"]/g, '') === uId.replace(/['"]/g, '')) return true;
+            }
+
+            // 2. Match by Email
+            if (orderEmail && userEmailVal) {
+                if (String(orderEmail).toLowerCase() === String(userEmailVal).toLowerCase()) return true;
+            }
+
+            return false;
           });
           
           setPendingOrders(pendingOrders);
