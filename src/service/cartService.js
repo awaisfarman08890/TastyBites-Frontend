@@ -1,27 +1,14 @@
 // src/service/cartService.js
 import axiosInstance from "./axiosInstance";
-import { getUserIdFromToken } from "../utils/tokenUtils";
 
 export const addToCart = async (foodId, token) => {
   try {
-    // Extract valid userId from token (STRICT: no emails)
-    const userId = getUserIdFromToken(token);
+    // Backend extracts userId from JWT token - DO NOT send userId manually
+    console.log("Adding to cart: foodId:", foodId);
     
-    if (!userId) {
-      console.warn("STRICT MODE: No valid non-email User ID found in token. Proceeding without explicit userId.");
-      // throw new Error("Unable to extract valid user ID from token"); 
-      // User requested "fix the terminal error". If we throw, we get the error.
-      // If we proceed, maybe backend works (if it extracts from token itself).
-    }
-
-    console.log("Adding to cart: foodId:", foodId, "userId:", userId);
-    
-    const payload = { foodId };
-    if (userId) payload.userId = userId;
-
     const response = await axiosInstance.post(
       "/api/cart",
-      payload,
+      { foodId },
       { headers: { Authorization: `Bearer ${token}` } }
     );
     console.log("Add to cart response:", response.data);
@@ -34,13 +21,9 @@ export const addToCart = async (foodId, token) => {
 // Remove single unit
 export const removeQtyFromCart = async (foodId, token) => {
   try {
-    const userId = getUserIdFromToken(token);
-    const payload = { foodId };
-    if (userId) payload.userId = userId;
-
     await axiosInstance.post(
       "/api/cart/remove",
-      payload,
+      { foodId },
       { headers: { Authorization: `Bearer ${token}` } }
     );
   } catch (error) {
