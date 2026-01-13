@@ -20,15 +20,11 @@ export const StoreContextProvider = ({ children }) => {
 
   // ➕ Increase quantity
   const increaseQuantity = async (id) => {
-    // Don't proceed if token is not available or still loading
+    // Don't proceed if token is not available
     if (!token) {
       toast.error("Please log in to add items to cart.");
       return;
     }
-
-    // Prevent double requests for same item
-    if (addingToCart.current[id]) return;
-    addingToCart.current[id] = true;
 
     // Optimistically update UI
     setQuantities((prev) => ({
@@ -50,13 +46,10 @@ export const StoreContextProvider = ({ children }) => {
         return updated;
       });
       
-      // Only show error if it's not a network/auth error (to avoid duplicate toasts)
       if (err.response?.status !== 401 && err.response?.status !== 403) {
         console.error("Error adding food:", err.response || err);
-        toast.error("Failed to add food to cart.");
+        // Toast disabled to avoid spamming user if they click fast
       }
-    } finally {
-        addingToCart.current[id] = false;
     }
   };
 
@@ -95,10 +88,10 @@ export const StoreContextProvider = ({ children }) => {
       await removeItemFromCart(foodId, token);
     } catch (err) {
       console.error("Remove from cart failed:", err.response || err);
-      // If endpoint fails (e.g. 404), maybe try removeQty loop?
-      // For now, we assume failure means we should warn user, but state is already cleared.
-      // If we refresh, it might come back if backend didn't process.
-      toast.error("Failed to remove item from cart database.");
+      // Show actual error from backend to debug
+      const errMsg = err.response?.data?.message || err.message || "Unknown error";
+      toast.error(`Remove failed: ${err.response?.status || ''} - ${errMsg}`);
+      
       // Revert optimistic update by reloading real data
       await loadCartData(token);
     }
