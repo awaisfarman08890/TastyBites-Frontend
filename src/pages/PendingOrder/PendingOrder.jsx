@@ -190,16 +190,19 @@ const PendingOrders = () => {
                     <strong style={{ color: "tomato" }}>${order.amount?.toFixed(2) || "0.00"}</strong>
                   </td>
                   <td>
-                    {order.orderItems && order.orderItems.length > 0 ? (
-                      order.orderItems.map((item, i) => (
-                        <span key={i}>
-                          {item.name} x {item.quantity}
-                          {i !== order.orderItems.length - 1 && ", "}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-muted">No items</span>
-                    )}
+                    {(() => {
+                      const items = order.orderedItems || order.orderItems || [];
+                      return items.length > 0 ? (
+                        items.map((item, i) => (
+                          <span key={i}>
+                            {item.name} x {item.quantity}
+                            {i !== items.length - 1 && ", "}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-muted">No items</span>
+                      );
+                    })()}
                   </td>
                   <td>
                     <span className="badge bg-warning text-dark">
