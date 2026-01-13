@@ -25,10 +25,9 @@ export const StoreContextProvider = ({ children }) => {
       return;
     }
 
-    // Ultra-fast guard (250ms) to prevent duplicate requests without blocking the user
+    // Prevent duplicate requests for the same ID until the current one finishes
     if (addingToCart.current[id]) return;
     addingToCart.current[id] = true;
-    setTimeout(() => { addingToCart.current[id] = false; }, 250);
 
     // Update UI INSTANTLY
     setQuantities((prev) => ({
@@ -45,6 +44,8 @@ export const StoreContextProvider = ({ children }) => {
         else delete updated[id];
         return updated;
       });
+    } finally {
+      addingToCart.current[id] = false;
     }
   };
 
@@ -52,7 +53,6 @@ export const StoreContextProvider = ({ children }) => {
   const decreaseQuantity = async (id) => {
     if (!token || addingToCart.current[id]) return;
     addingToCart.current[id] = true;
-    setTimeout(() => { addingToCart.current[id] = false; }, 250);
 
     setQuantities((prev) => {
       const updated = { ...prev };
@@ -65,6 +65,8 @@ export const StoreContextProvider = ({ children }) => {
       await removeQtyFromCart(id);
     } catch (err) {
       await loadCartData();
+    } finally {
+      addingToCart.current[id] = false;
     }
   };
 
@@ -72,7 +74,6 @@ export const StoreContextProvider = ({ children }) => {
   const removeFromCart = async (foodId) => {
     if (!token || addingToCart.current[foodId]) return;
     addingToCart.current[foodId] = true;
-    setTimeout(() => { addingToCart.current[foodId] = false; }, 250);
 
     setQuantities((prev) => {
         const updated = { ...prev };
@@ -85,6 +86,8 @@ export const StoreContextProvider = ({ children }) => {
     } catch (err) {
       toast.error("Could not remove item.");
       await loadCartData();
+    } finally {
+      addingToCart.current[foodId] = false;
     }
   };
 
