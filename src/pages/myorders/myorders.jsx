@@ -27,6 +27,8 @@ const MyOrders = () => {
       setLoading(true);
       setError(null);
       
+      const userIdString = userId ? String(userId).trim() : null;
+      
       if (!userIdString) {
         console.warn("STRICT MODE: No valid non-email userId string found, but token exists. Attempting generic fetch.");
         // We will try to fetch user specific endpoint, maybe it works without ID
