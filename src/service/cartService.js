@@ -1,84 +1,64 @@
 // src/service/cartService.js
 import axiosInstance from "./axiosInstance";
-import { getUserEmailFromToken } from "../utils/tokenUtils";
 
-export const addToCart = async (foodId, token) => {
+/**
+ * FIXED: Strictly following backend security requirements.
+ * userId is extracted from JWT token on the backend.
+ * DO NOT send userId manually from frontend.
+ */
+
+export const addToCart = async (foodId) => {
   try {
-    const userId = getUserEmailFromToken(token);
-    // Explicitly send userId in body for POST
-    await axiosInstance.post("/api/cart", { foodId, userId });
+    // Send only foodId. Backend gets userId from token.
+    const response = await axiosInstance.post("/api/cart", { foodId });
+    return response.data;
   } catch (error) {
     console.error("Error adding to cart:", error);
     throw error;
   }
 };
 
-// Remove single unit from cart
-export const removeQtyFromCart = async (foodId, token) => {
+export const removeQtyFromCart = async (foodId) => {
   try {
-    const userId = getUserEmailFromToken(token);
-    // Explicitly send userId in body for POST
-    await axiosInstance.post("/api/cart/remove", { foodId, userId });
+    // Send only foodId. Backend gets userId from token.
+    const response = await axiosInstance.post("/api/cart/remove", { foodId });
+    return response.data;
   } catch (error) {
-    console.error("Error removing unit:", error);
+    console.error("Error removing quantity:", error);
     throw error;
   }
 };
 
-// Remove item completely
-export const removeItemFromCart = async (foodId, token) => {
+export const removeItemFromCart = async (foodId) => {
   try {
-    const userId = getUserEmailFromToken(token);
-    // Use DELETE with userId as query param to avoid 403 body issues
-    await axiosInstance.delete(`/api/cart/${foodId}`, {
-       params: { userId } 
-    });
+    // DELETE /api/cart/{foodId}. Backend gets userId from token.
+    const response = await axiosInstance.delete(`/api/cart/${foodId}`);
+    return response.data;
   } catch (error) {
     console.error("Error removing item:", error);
     throw error;
   }
 };
 
-export const getCartData = async (token) => {
-  try {   
-    const userId = getUserEmailFromToken(token);
-    if (!userId) return {};
-
-    console.log(`Fetching cart items for: ${userId}`);
-    const response = await axiosInstance.get(`/api/cart/${userId}`);
+export const getCartData = async () => {
+  try {
+    // GET /api/cart. Backend returns CartEntity for authenticated user.
+    const response = await axiosInstance.get("/api/cart");
+    console.log("Cart data received:", response.data);
     
-    // LOG THE ACTUAL RESPONSE so we can see what the backend is doing
-    console.log("Raw cart response from server:", response.data);
-
-    // Robust extraction: Handle single object, array, or direct items map
-    const data = response.data;
-    
-    if (Array.isArray(data) && data.length > 0) {
-        return data[0].items || {};
-    }
-    
-    if (data && typeof data === 'object') {
-        // If it's already the items map {product: qty}
-        if (!data.items && !data.userId && Object.keys(data).length > 0) return data;
-        // Otherwise return the items field
-        return data.items || {};
-    }
-
-    return {};
+    // Extract items map from CartEntity { userId, items: { productId: qty }, ... }
+    return response.data?.items || {};
   } catch (error) {
-    console.error("Cart fetch error:", error.response?.status, error.response?.data || error.message);
+    console.error("Error fetching cart data:", error);
     return {};
   }
 };
 
-// Clear entire cart
-export const clearCart = async (token) => {
+export const clearCart = async () => {
   try {
-    const userId = getUserEmailFromToken(token);
-    // Use DELETE with userId as query param to avoid 403 body issues
-    await axiosInstance.delete("/api/cart", {
-       params: { userId } 
-    });
+    // DELETE /api/cart. Backend clears cart for authenticated user.
+    const response = await axiosInstance.delete("/api/cart");
+    return response.data;
   } catch (error) {
     console.error("Error clearing cart:", error);
     throw error;

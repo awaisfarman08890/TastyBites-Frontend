@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState, useRef } from "react";
 import { fetchFoodItems } from "../service/foodService";
-import { addToCart, removeQtyFromCart, removeItemFromCart, getCartData } from "../service/cartService";
+import { addToCart, removeQtyFromCart, removeItemFromCart, getCartData, clearCart } from "../service/cartService";
 import { toast } from "react-toastify";
 
 // Create store context
@@ -37,7 +37,7 @@ export const StoreContextProvider = ({ children }) => {
     }));
 
     try {
-      await addToCart(id, token);
+      await addToCart(id);
     } catch (err) {
       setQuantities((prev) => {
         const updated = { ...prev };
@@ -62,9 +62,9 @@ export const StoreContextProvider = ({ children }) => {
     });
 
     try {
-      await removeQtyFromCart(id, token);
+      await removeQtyFromCart(id);
     } catch (err) {
-      await loadCartData(token);
+      await loadCartData();
     }
   };
 
@@ -81,26 +81,34 @@ export const StoreContextProvider = ({ children }) => {
     });
 
     try {
-      await removeItemFromCart(foodId, token);
+      await removeItemFromCart(foodId);
     } catch (err) {
       toast.error("Could not remove item.");
-      await loadCartData(token);
+      await loadCartData();
     }
   };
 
   // 🔄 Load cart from backend
-  const loadCartData = async (tk) => {
+  const loadCartData = async () => {
+    if (!localStorage.getItem("token")) return;
     try {
-      console.log("Loading cart data with token prefix:", tk ? tk.substring(0, 10) + "..." : "none");
-      const items = await getCartData(tk);
-      console.log("Cart items received from backend:", items);
+      const items = await getCartData();
       setQuantities(items || {});
     } catch (err) {
-      console.error("Cart load failed:", err.response || err);
-      // Don't reset to empty immediately - keep optimistic state if possible, or verify behavior
-      // For now, on load error we do clear, assuming token issue
-      setQuantities({});
+      console.error("Cart load failed:", err);
       toast.error("Failed to load cart data.");
+    }
+  };
+
+  // 🧹 Clear cart (New)
+  const clearCurrentCart = async () => {
+    if (!token) return;
+    try {
+        await clearCart();
+        setQuantities({});
+        toast.success("Cart cleared");
+    } catch (error) {
+        toast.error("Failed to clear cart");
     }
   };
 
@@ -137,14 +145,9 @@ export const StoreContextProvider = ({ children }) => {
         setLoadingFood(false);
       }
 
-      // Load token and cart (token already initialized, but sync with localStorage)
-      const tk = localStorage.getItem("token");
-      if (tk && tk !== token) {
-        setToken(tk);
-        await loadCartData(tk);
-      } else if (tk) {
-        // Token already set, just load cart
-        await loadCartData(tk);
+      // Load token and cart
+      if (localStorage.getItem("token")) {
+        await loadCartData();
       }
     })();
   }, []);
@@ -157,6 +160,7 @@ export const StoreContextProvider = ({ children }) => {
         increaseQuantity,
         decreaseQuantity,
         removeFromCart,
+        clearCurrentCart,
         token,
         setToken,
         setQuantities,
