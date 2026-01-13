@@ -5,7 +5,7 @@ import {
   fetchPendingOrders,
   retryPayment,
 } from "../../service/pendingService";
-import { getUserIdFromToken } from "../../utils/tokenUtils";
+import { getUserIdFromToken, getUserEmailFromToken } from "../../utils/tokenUtils";
 import axiosInstance from "../../service/axiosInstance";
 
 const PendingOrders = () => {
@@ -16,8 +16,11 @@ const PendingOrders = () => {
 
   useEffect(() => {
     const loadPendingOrders = async () => {
-      const userId = getUserIdFromToken(token);
-      if (!userId || !token) {
+      const userId = getUserIdFromToken(token); // This is strictly NON-EMAIL ID
+      // But we also need the email because backend might have saved orders with Email as ID
+      const userEmail = getUserEmailFromToken(token);
+
+      if ((!userId && !userEmail) || !token) {
         setLoading(false);
         return;
       }
@@ -25,7 +28,6 @@ const PendingOrders = () => {
       try {
         setLoading(true);
         // Force use of robust "Fetch All + Filter" strategy
-        // This ensures consistency with MyOrders logic
         console.log("Fetching all orders to filter for pending...");
         
         const res = await axiosInstance.get("/api/orders/all", {
@@ -40,20 +42,7 @@ const PendingOrders = () => {
         }
         
         console.log("Total orders fetched:", allOrders.length);
-
-        // Backported robust filtering from MyOrders
-        const userIdString = userId ? String(userId).trim() : null;
-        
-        // Decode email from token for fallback filter
-        const tokenParts = token ? token.split('.') : [];
-        let userEmailVal = null;
-        if (tokenParts.length > 1) {
-            try {
-                const payload = JSON.parse(atob(tokenParts[1].replace(/-/g, '+').replace(/_/g, '/')));
-                userEmailVal = payload.email || payload.sub || payload.userEmail;
-                if (userEmailVal && !userEmailVal.includes('@')) userEmailVal = null;
-            } catch(e) {}
-        }
+        console.log("Filtering with - UserID:", userId, "Email:", userEmail);
         
         // Filter by userId/Email AND PENDING payment status
         const pendingOrders = allOrders.filter(order => {
@@ -64,23 +53,28 @@ const PendingOrders = () => {
           const isPending = (order.paymentStatus || "").toUpperCase() === "PENDING";
           if (!isPending) return false;
 
-          // 1. Match by ID 
-          if (orderUserId && userIdString) {
-              const oId = String(orderUserId).trim();
-              const uId = String(userIdString).trim();
-              if (oId === uId || oId.replace(/['"]/g, '') === uId.replace(/['"]/g, '')) return true;
-          }
+          // Normalize values
+          const oId = orderUserId ? String(orderUserId).trim() : "";
+          const oEmail = orderEmail ? String(orderEmail).trim().toLowerCase() : "";
+          const uId = userId ? String(userId).trim() : "";
+          const uEmail = userEmail ? String(userEmail).trim().toLowerCase() : "";
 
-          // 2. Match by Email
-          if (orderEmail && userEmailVal) {
-              if (String(orderEmail).toLowerCase() === String(userEmailVal).toLowerCase()) return true;
-          }
+          // 1. Match by ID (Order ID === Token ID)
+          if (uId && oId && (oId === uId || oId.replace(/['"]/g, '') === uId.replace(/['"]/g, ''))) return true;
+
+          // 2. Match by Email (Order Email === Token Email)
+          if (uEmail && oEmail && oEmail === uEmail) return true;
+
+          // 3. CROSS-MATCH: Legacy "Email as ID" (Order ID === Token Email)
+          // This catches orders where backend saved "demo8@gmail.com" as the userId
+          if (uEmail && oId && oId.toLowerCase() === uEmail) return true;
 
           return false;
         });
         
         console.log("Filtered pending orders:", pendingOrders.length);
         setPendingOrders(pendingOrders);
+
 
       } catch (error) {
         console.error("Failed to load pending orders:", error);
