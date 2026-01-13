@@ -25,7 +25,7 @@ export const StoreContextProvider = ({ children }) => {
       return;
     }
 
-    // Optimistically update UI instantly on first click
+    // UPDATE UI IMMEDIATELY
     setQuantities((prev) => ({
       ...prev,
       [id]: (prev[id] || 0) + 1,
@@ -34,14 +34,14 @@ export const StoreContextProvider = ({ children }) => {
     try {
       await addToCart(id, token);
     } catch (err) {
-      // Revert if server fails
+      // Revert UI only if server fails
       setQuantities((prev) => {
         const updated = { ...prev };
         if (updated[id] > 1) updated[id]--;
         else delete updated[id];
         return updated;
       });
-      console.error("Error adding food:", err.response || err);
+      console.error("Cart increase failed:", err);
     }
   };
 
@@ -59,7 +59,8 @@ export const StoreContextProvider = ({ children }) => {
     try {
       await removeQtyFromCart(id, token);
     } catch (err) {
-      console.error("Decrease qty failed:", err.response || err);
+      console.error("Cart decrease failed:", err);
+      // Re-sync with server state on error
       await loadCartData(token);
     }
   };
@@ -78,9 +79,10 @@ export const StoreContextProvider = ({ children }) => {
     try {
       await removeItemFromCart(foodId, token);
     } catch (err) {
-      console.error("Remove from cart failed:", err.response || err);
-      const errMsg = err.response?.data?.message || err.message || "Unknown error";
-      toast.error(`Remove failed: ${err.response?.status || ''} - ${errMsg}`);
+      console.error("Item removal failed:", err);
+      const errMsg = err.response?.data?.message || "Server error. Could not delete.";
+      toast.error(`Remove failed: ${errMsg}`);
+      // Re-sync with server state on error
       await loadCartData(token);
     }
   };
