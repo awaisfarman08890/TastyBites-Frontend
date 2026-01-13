@@ -46,20 +46,46 @@ const MyOrders = () => {
         allOrders = res.data.data;
       }
 
-      // STRICT Filtering: Match ONLY by userId (Exact Match)
-      // Show ALL orders regardless of status (PENDING, PAID, FAILED)
+      // STRICT Filtering: Match by userId OR email (to be safe against backend data inconsistencies)
+      const userEmail = getUserIdFromToken(token) ? null : String(token).includes('@') ? null : null; // We can't easily get email here without util call, but we have userId from token.
+      
+      // Let's rely on the tokenUtils to get email if available, we need to import it properly or decode it.
+      // But we already have userIdString. 
+      // The goal is: if backend saved order with email as ID, and we have that email, show it.
+      
+      // Let's decode email from token again for the filter
+      const tokenParts = token ? token.split('.') : [];
+      let userEmailVal = null;
+      if (tokenParts.length > 1) {
+         try {
+             const payload = JSON.parse(atob(tokenParts[1].replace(/-/g, '+').replace(/_/g, '/')));
+             userEmailVal = payload.email || payload.sub || payload.userEmail;
+             if (userEmailVal && !userEmailVal.includes('@')) userEmailVal = null; // if sub is not email
+         } catch(e) {}
+      }
+
       const userOrders = allOrders.filter(order => {
         const orderUserId = order.userId || 
                            order.user?.id || 
                            order.user?._id ||
                            order.userId?.toString();
-
+                           
         if (!orderUserId) return false;
 
         const orderUserIdStr = String(orderUserId).trim();
-        // Strict comparison of strings
-        return orderUserIdStr === userIdString || 
-               orderUserIdStr.replace(/['"]/g, '') === userIdString.replace(/['"]/g, '');
+        const normalizedUserId = String(userIdString).trim();
+        
+        // Match 1: Strict ID
+        if (userIdString && (orderUserIdStr === normalizedUserId || orderUserIdStr.replace(/['"]/g, '') === normalizedUserId.replace(/['"]/g, ''))) {
+            return true;
+        }
+        
+        // Match 2: Email (Fallback)
+        if (userEmailVal && String(orderUserIdStr).toLowerCase() === String(userEmailVal).toLowerCase()) {
+            return true;
+        }
+        
+        return false;
       });
       
       // Sort by date (newest first) if createdAt exists
