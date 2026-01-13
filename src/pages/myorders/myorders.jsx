@@ -65,27 +65,34 @@ const MyOrders = () => {
       }
 
       console.log("Filtering orders for UserID:", userIdString, "or Email:", userEmailVal);
+      console.log("Total orders before filter:", allOrders.length);
 
       const userOrders = allOrders.filter(order => {
-        // 0. EXCLUDE PENDING ORDERS FIRST
-        // These belong in PendingOrders page only.
-        if ((order.paymentStatus || "").toUpperCase() === "PENDING") return false;
-
-        // Get all possible identifiers from order
+        const status = (order.paymentStatus || "").toUpperCase().trim();
         const orderUserId = order.userId || order.user?.id || order.user?._id || order.userId?.toString();
         const orderEmail = order.email || order.user?.email || order.userEmail;
         
-        // 1. Match by ID (Strict or Loose)
-        if (orderUserId && userIdString) {
-             const oId = String(orderUserId).trim();
-             const uId = String(userIdString).trim();
-             if (oId === uId || oId.replace(/['"]/g, '') === uId.replace(/['"]/g, '')) return true;
-        }
+        // Debug Log for skipped orders to see why they are skipped
+        // console.log(`Checking Order ${order._id || order.id}: Status=${status}, UserID=${orderUserId}`);
 
-        // 2. Match by Email
-        if (orderEmail && userEmailVal) {
-             if (String(orderEmail).toLowerCase() === String(userEmailVal).toLowerCase()) return true;
-        }
+        // 0. EXCLUDE PENDING ORDERS FIRST (MyOrders Page)
+        if (status === "PENDING") return false;
+
+        // ... matching logic ...
+        // Normalize values
+        const oId = orderUserId ? String(orderUserId).trim() : "";
+        const oEmail = orderEmail ? String(orderEmail).trim().toLowerCase() : "";
+        const uId = userIdString ? String(userIdString).trim() : "";
+        const uEmail = userEmailVal ? String(userEmailVal).trim().toLowerCase() : "";
+
+        // 1. Match by ID (Order ID === Token ID)
+        if (uId && oId && (oId === uId || oId.replace(/['"]/g, '') === uId.replace(/['"]/g, ''))) return true;
+
+        // 2. Match by Email (Order Email === Token Email)
+        if (uEmail && oEmail && oEmail === uEmail) return true;
+
+         // 3. CROSS-MATCH: Legacy "Email as ID" (Order ID === Token Email)
+         if (uEmail && oId && oId.toLowerCase() === uEmail) return true;
 
         return false;
       });
