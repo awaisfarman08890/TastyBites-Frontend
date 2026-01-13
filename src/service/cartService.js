@@ -1,14 +1,16 @@
 // src/service/cartService.js
 import axiosInstance from "./axiosInstance";
+import { getUserEmailFromToken } from "../utils/tokenUtils";
 
 export const addToCart = async (foodId, token) => {
   try {
-    // Backend extracts userId from JWT token - DO NOT send userId manually
-    console.log("Adding to cart: foodId:", foodId);
+    // Explicitly send the email as userId to help the backend 'upsert' rather than duplicate
+    const userId = getUserEmailFromToken(token);
+    console.log("Adding to cart: foodId:", foodId, "userId:", userId);
     
     const response = await axiosInstance.post(
       "/api/cart",
-      { foodId },
+      { foodId, userId },
       { headers: { Authorization: `Bearer ${token}` } }
     );
     console.log("Add to cart response:", response.data);
@@ -21,9 +23,10 @@ export const addToCart = async (foodId, token) => {
 // Remove single unit
 export const removeQtyFromCart = async (foodId, token) => {
   try {
+    const userId = getUserEmailFromToken(token);
     await axiosInstance.post(
       "/api/cart/remove",
-      { foodId },
+      { foodId, userId },
       { headers: { Authorization: `Bearer ${token}` } }
     );
   } catch (error) {
@@ -31,14 +34,15 @@ export const removeQtyFromCart = async (foodId, token) => {
   }
 };
 
-// ✅ NEW: Remove item completely
+// ✅ FIX: Using params to avoid 403 and passing userId explicitly
 export const removeItemFromCart = async (foodId, token) => {
   try {
-    // We rely solely on the token for user identification to avoid 403 Forbidden
-    // (Backend likely rejects explicit userId injection or body parsing issues in DELETE)
+    const userId = getUserEmailFromToken(token);
     
+    // Some backends reject DELETE with body but accept query params for identification
     await axiosInstance.delete(`/api/cart/${foodId}`, {
-       headers: { Authorization: `Bearer ${token}` }
+       headers: { Authorization: `Bearer ${token}` },
+       params: { userId } 
     });
 
   } catch (error) {

@@ -25,11 +25,7 @@ export const StoreContextProvider = ({ children }) => {
       return;
     }
 
-    // Lock to prevent double-add requests (Fix for Duplicate Cart Entries)
-    if (addingToCart.current[id]) return;
-    addingToCart.current[id] = true;
-
-    // Optimistically update UI
+    // Optimistically update UI instantly on first click
     setQuantities((prev) => ({
       ...prev,
       [id]: (prev[id] || 0) + 1,
@@ -37,35 +33,21 @@ export const StoreContextProvider = ({ children }) => {
 
     try {
       await addToCart(id, token);
-      console.log(`Successfully added ${id} to cart`);
     } catch (err) {
-      // Revert optimistic update on error
+      // Revert if server fails
       setQuantities((prev) => {
         const updated = { ...prev };
-        if (updated[id] > 1) {
-          updated[id]--;
-        } else {
-          delete updated[id];
-        }
+        if (updated[id] > 1) updated[id]--;
+        else delete updated[id];
         return updated;
       });
-      
-      if (err.response?.status !== 401 && err.response?.status !== 403) {
-        console.error("Error adding food:", err.response || err);
-        toast.error("Failed to add to cart. Please try again.");
-      }
-    } finally {
-      addingToCart.current[id] = false;
+      console.error("Error adding food:", err.response || err);
     }
   };
 
   // ➖ Decrease quantity
   const decreaseQuantity = async (id) => {
     if (!token) return;
-
-    // Lock to prevent overlapping decrease requests
-    if (addingToCart.current[id]) return;
-    addingToCart.current[id] = true;
 
     setQuantities((prev) => {
       const updated = { ...prev };
@@ -78,20 +60,13 @@ export const StoreContextProvider = ({ children }) => {
       await removeQtyFromCart(id, token);
     } catch (err) {
       console.error("Decrease qty failed:", err.response || err);
-      toast.error("Failed to update cart.");
-      // On error, reload full cart to ensure sync
       await loadCartData(token);
-    } finally {
-      addingToCart.current[id] = false;
     }
   };
 
   // 🗑️ Remove item completely from cart
   const removeFromCart = async (foodId) => {
     if (!token) return;
-
-    if (addingToCart.current[foodId]) return;
-    addingToCart.current[foodId] = true;
 
     // Optimistic remove
     setQuantities((prev) => {
@@ -101,19 +76,12 @@ export const StoreContextProvider = ({ children }) => {
     });
 
     try {
-      // Call dedicated remove endpoint to ensure it's deleted from DB
       await removeItemFromCart(foodId, token);
-      console.log(`Successfully removed ${foodId} from cart`);
     } catch (err) {
       console.error("Remove from cart failed:", err.response || err);
-      // Show actual error from backend to debug
       const errMsg = err.response?.data?.message || err.message || "Unknown error";
       toast.error(`Remove failed: ${err.response?.status || ''} - ${errMsg}`);
-      
-      // Revert optimistic update by reloading real data
       await loadCartData(token);
-    } finally {
-      addingToCart.current[foodId] = false;
     }
   };
 
