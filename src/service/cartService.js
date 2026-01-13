@@ -40,22 +40,10 @@ export const removeItemFromCart = async (foodId, token) => {
 };
 
 export const getCartData = async (token) => {
-  try {
-    const response = await axiosInstance.get("/api/cart");
-    // Merging items if the backend returns multiple documents (robust check)
-    const data = response.data;
-    if (Array.isArray(data)) {
-      const mergedItems = {};
-      data.forEach(cart => {
-        if (cart.items) {
-          Object.entries(cart.items).forEach(([prodId, qty]) => {
-            mergedItems[prodId] = (mergedItems[prodId] || 0) + qty;
-          });
-        }
-      });
-      return mergedItems;
-    }
-    return data?.items || {};
+  try {   
+    const userId = getUserEmailFromToken(token);
+    const response = await axiosInstance.get(`/api/cart/${userId}`);
+    return response.data?.items || {};
   } catch (error) {
     console.error("Error fetching cart data:", error);
     return {};
@@ -66,9 +54,9 @@ export const getCartData = async (token) => {
 export const clearCart = async (token) => {
   try {
     const userId = getUserEmailFromToken(token);
-    // Always send userId as query param for DELETE
+    // Use DELETE with userId as query param to avoid 403 body issues
     await axiosInstance.delete("/api/cart", {
-      params: { userId }
+       params: { userId } 
     });
   } catch (error) {
     console.error("Error clearing cart:", error);
