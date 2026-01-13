@@ -87,6 +87,10 @@ const MyOrders = () => {
         // 3. Last Resort: If the order was just created in this session, we might not have ID sync yet.
         // But if they are logged in, they should match.
         
+        // 3. EXCLUDE PENDING ORDERS
+        // User requested that "Retry Payment" orders (Pending) should NOT appear here, but only in PendingOrders page.
+        if ((order.paymentStatus || "").toUpperCase() === "PENDING") return false;
+        
         return false;
       });
       
@@ -221,14 +225,6 @@ const MyOrders = () => {
                     </span>
                   </td>
                   <td>
-                    {order.paymentStatus === "PENDING" && (
-                        <button
-                          className="btn btn-sm btn-tomato me-2"
-                          onClick={() => handleRetryPayment(order.id || order._id)}
-                        >
-                          Retry Payment
-                        </button>
-                    )}
                     <button
                       className="btn btn-sm btn-tt"
                       onClick={fetchOrders}
