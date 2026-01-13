@@ -24,67 +24,64 @@ const PendingOrders = () => {
 
       try {
         setLoading(true);
-        // Try to fetch from pending orders endpoint first
-        try {
-          const data = await fetchPendingOrders(userId);
-          // Handle different response formats
-          const orders = Array.isArray(data) ? data : (data?.orders || data?.data || []);
-          setPendingOrders(orders);
-        } catch (pendingErr) {
-          // Fallback: fetch all orders and filter by PENDING status
-          console.log("Pending orders endpoint failed, fetching all orders:", pendingErr);
-          
-          const res = await axiosInstance.get("/api/orders/all", {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
-          let allOrders = [];
-          if (Array.isArray(res.data)) {
-            allOrders = res.data;
-          } else if (res.data?.data && Array.isArray(res.data.data)) {
-            allOrders = res.data.data;
-          }
-          
-          // Backported robust filtering from MyOrders
-          const userIdString = userId ? String(userId).trim() : null;
-          
-          // Decode email from token for fallback filter
-          const tokenParts = token ? token.split('.') : [];
-          let userEmailVal = null;
-          if (tokenParts.length > 1) {
-             try {
-                 const payload = JSON.parse(atob(tokenParts[1].replace(/-/g, '+').replace(/_/g, '/')));
-                 userEmailVal = payload.email || payload.sub || payload.userEmail;
-                 if (userEmailVal && !userEmailVal.includes('@')) userEmailVal = null;
-             } catch(e) {}
-          }
-          
-          // Filter by userId/Email AND PENDING payment status
-          const pendingOrders = allOrders.filter(order => {
-            const orderUserId = order.userId || order.user?.id || order.user?._id || order.userId?.toString();
-            const orderEmail = order.email || order.user?.email || order.userEmail;
-            
-            // Check status first
-            const isPending = (order.paymentStatus || "").toUpperCase() === "PENDING";
-            if (!isPending) return false;
-
-            // 1. Match by ID 
-            if (orderUserId && userIdString) {
-                const oId = String(orderUserId).trim();
-                const uId = String(userIdString).trim();
-                if (oId === uId || oId.replace(/['"]/g, '') === uId.replace(/['"]/g, '')) return true;
-            }
-
-            // 2. Match by Email
-            if (orderEmail && userEmailVal) {
-                if (String(orderEmail).toLowerCase() === String(userEmailVal).toLowerCase()) return true;
-            }
-
-            return false;
-          });
-          
-          setPendingOrders(pendingOrders);
+        // Force use of robust "Fetch All + Filter" strategy
+        // This ensures consistency with MyOrders logic
+        console.log("Fetching all orders to filter for pending...");
+        
+        const res = await axiosInstance.get("/api/orders/all", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        let allOrders = [];
+        if (Array.isArray(res.data)) {
+          allOrders = res.data;
+        } else if (res.data?.data && Array.isArray(res.data.data)) {
+          allOrders = res.data.data;
         }
+        
+        console.log("Total orders fetched:", allOrders.length);
+
+        // Backported robust filtering from MyOrders
+        const userIdString = userId ? String(userId).trim() : null;
+        
+        // Decode email from token for fallback filter
+        const tokenParts = token ? token.split('.') : [];
+        let userEmailVal = null;
+        if (tokenParts.length > 1) {
+            try {
+                const payload = JSON.parse(atob(tokenParts[1].replace(/-/g, '+').replace(/_/g, '/')));
+                userEmailVal = payload.email || payload.sub || payload.userEmail;
+                if (userEmailVal && !userEmailVal.includes('@')) userEmailVal = null;
+            } catch(e) {}
+        }
+        
+        // Filter by userId/Email AND PENDING payment status
+        const pendingOrders = allOrders.filter(order => {
+          const orderUserId = order.userId || order.user?.id || order.user?._id || order.userId?.toString();
+          const orderEmail = order.email || order.user?.email || order.userEmail;
+          
+          // Check status first
+          const isPending = (order.paymentStatus || "").toUpperCase() === "PENDING";
+          if (!isPending) return false;
+
+          // 1. Match by ID 
+          if (orderUserId && userIdString) {
+              const oId = String(orderUserId).trim();
+              const uId = String(userIdString).trim();
+              if (oId === uId || oId.replace(/['"]/g, '') === uId.replace(/['"]/g, '')) return true;
+          }
+
+          // 2. Match by Email
+          if (orderEmail && userEmailVal) {
+              if (String(orderEmail).toLowerCase() === String(userEmailVal).toLowerCase()) return true;
+          }
+
+          return false;
+        });
+        
+        console.log("Filtered pending orders:", pendingOrders.length);
+        setPendingOrders(pendingOrders);
+
       } catch (error) {
         console.error("Failed to load pending orders:", error);
         toast.error("Failed to load pending orders");
@@ -164,7 +161,7 @@ const PendingOrders = () => {
 
       {pendingOrders.length === 0 ? (
         <div className="text-center py-5">
-          <i className="bi bi-check-circle-fill text-success" style={{ fontSize: "3rem" }}></i>
+          <i className="bi bi-check-circle-fill" style={{ fontSize: "3rem", color: "tomato" }}></i>
           <p className="mt-3">No pending payments found.</p>
           <p className="text-muted">All your orders have been paid successfully.</p>
         </div>
