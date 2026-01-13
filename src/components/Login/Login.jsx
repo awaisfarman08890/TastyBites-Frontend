@@ -33,6 +33,11 @@ const Login = () => {
         localStorage.setItem("token", response.token);
         setToken(response.token);
 
+        // Clear previous user's potential cart data from state before loading new
+        // Note: loadCartData (if successful) will replace this, but if it fails we want empty struct not old data
+        // But StoreContext loadCartData handles setQuantities(items || {}). 
+        // We rely on loadCartData.
+        
         await loadCartData(response.token);
 
         toast.success("Login successful");

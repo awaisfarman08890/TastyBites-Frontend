@@ -13,7 +13,7 @@ export const addToCart = async (foodId, token) => {
 
 
 
-    console.log("Adding to cart with userId:", userId, "foodId:", foodId);
+    console.log("Adding to cart with userId:", userId, "(isEmail:", userId.includes('@'), ")", "foodId:", foodId);
     
     const response = await axiosInstance.post(
       "/api/cart",

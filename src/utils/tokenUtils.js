@@ -48,9 +48,15 @@ export const getUserIdFromToken = (token) => {
     decoded.sub
   ];
   
-  // Find the first valid value
+  // Helper to check if a value is an email
+  const isEmail = (value) => {
+    if (!value || typeof value !== 'string') return false;
+    return value.includes('@');
+  };
+
+  // Find the first valid value that is NOT an email
   for (const value of possibleValues) {
-    if (value) {
+    if (value && !isEmail(String(value))) {
       return String(value);
     }
   }
