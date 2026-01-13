@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useEffect, useState, useRef } from "react";
 import { fetchFoodItems } from "../service/foodService";
 import { addToCart, removeQtyFromCart, removeItemFromCart, getCartData } from "../service/cartService";
 import { toast } from "react-toastify";
@@ -14,7 +14,8 @@ export const StoreContextProvider = ({ children }) => {
     return localStorage.getItem("token") || "";
   });
   const [loadingFood, setLoadingFood] = useState(true);
-  const [authLoading, setAuthLoading] = useState(false);
+  // Lock to prevent double-add requests (Race Condition Fix)
+  const addingToCart = useRef({});
 
   // ➕ Increase quantity
   const increaseQuantity = async (id) => {
@@ -23,6 +24,10 @@ export const StoreContextProvider = ({ children }) => {
       toast.error("Please log in to add items to cart.");
       return;
     }
+
+    // Prevent double requests for same item
+    if (addingToCart.current[id]) return;
+    addingToCart.current[id] = true;
 
     // Optimistically update UI
     setQuantities((prev) => ({
@@ -49,6 +54,8 @@ export const StoreContextProvider = ({ children }) => {
         console.error("Error adding food:", err.response || err);
         toast.error("Failed to add food to cart.");
       }
+    } finally {
+        addingToCart.current[id] = false;
     }
   };
 
