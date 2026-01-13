@@ -39,14 +39,15 @@ export const removeItemFromCart = async (foodId, token) => {
   try {
     const userId = getUserEmailFromToken(token);
     
-    // Some backends reject DELETE with body but accept query params for identification
+    // We pass userId as a query parameter. This is compatible with most Spring Boot 
+    // @DeleteMapping @RequestParam setups and avoids 403 body-stripping issues.
     await axiosInstance.delete(`/api/cart/${foodId}`, {
        headers: { Authorization: `Bearer ${token}` },
        params: { userId } 
     });
 
   } catch (error) {
-    console.error("Error while removing item from cart", error);
+    console.error("Error while removing item from cart:", error.response?.data || error.message);
     throw error;
   }
 };
