@@ -74,9 +74,6 @@ const Cart = () => {
                                         </div>
                                         <div className="col-md-2 text-end">
                                             <p className="fw-bold">${(food.price * quantities[food.id]).toFixed(2)}</p>
-                                            <button className="btn btn-sm btn-outline-danger" onClick={() => removeFromCart(food.id)}>
-                                                <i className="bi bi-trash"></i>
-                                            </button>
                                         </div>
                                         <hr/>
                                     </div>
