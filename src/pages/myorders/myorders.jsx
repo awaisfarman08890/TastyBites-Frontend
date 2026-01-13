@@ -64,29 +64,33 @@ const MyOrders = () => {
          } catch(e) {}
       }
 
-      const userOrders = allOrders.filter(order => {
-        const orderUserId = order.userId || 
-                           order.user?.id || 
-                           order.user?._id ||
-                           order.userId?.toString();
-                           
-        if (!orderUserId) return false;
+      console.log("Filtering orders for UserID:", userIdString, "or Email:", userEmailVal);
 
-        const orderUserIdStr = String(orderUserId).trim();
-        const normalizedUserId = String(userIdString).trim();
+      // Ultra-robust Filtering:
+      const userOrders = allOrders.filter(order => {
+        // Get all possible identifiers from order
+        const orderUserId = order.userId || order.user?.id || order.user?._id || order.userId?.toString();
+        const orderEmail = order.email || order.user?.email || order.userEmail;
         
-        // Match 1: Strict ID
-        if (userIdString && (orderUserIdStr === normalizedUserId || orderUserIdStr.replace(/['"]/g, '') === normalizedUserId.replace(/['"]/g, ''))) {
-            return true;
+        // 1. Match by ID (Strict or Loose)
+        if (orderUserId && userIdString) {
+             const oId = String(orderUserId).trim();
+             const uId = String(userIdString).trim();
+             if (oId === uId || oId.replace(/['"]/g, '') === uId.replace(/['"]/g, '')) return true;
         }
-        
-        // Match 2: Email (Fallback)
-        if (userEmailVal && String(orderUserIdStr).toLowerCase() === String(userEmailVal).toLowerCase()) {
-            return true;
+
+        // 2. Match by Email
+        if (orderEmail && userEmailVal) {
+             if (String(orderEmail).toLowerCase() === String(userEmailVal).toLowerCase()) return true;
         }
+
+        // 3. Last Resort: If the order was just created in this session, we might not have ID sync yet.
+        // But if they are logged in, they should match.
         
         return false;
       });
+      
+      console.log("Matched orders:", userOrders.length);
       
       // Sort by date (newest first) if createdAt exists
       userOrders.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
