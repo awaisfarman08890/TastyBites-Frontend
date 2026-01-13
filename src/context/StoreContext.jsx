@@ -91,10 +91,14 @@ export const StoreContextProvider = ({ children }) => {
   // 🔄 Load cart from backend
   const loadCartData = async (tk) => {
     try {
+      console.log("Loading cart data with token prefix:", tk ? tk.substring(0, 10) + "..." : "none");
       const items = await getCartData(tk);
+      console.log("Cart items received from backend:", items);
       setQuantities(items || {});
     } catch (err) {
       console.error("Cart load failed:", err.response || err);
+      // Don't reset to empty immediately - keep optimistic state if possible, or verify behavior
+      // For now, on load error we do clear, assuming token issue
       setQuantities({});
       toast.error("Failed to load cart data.");
     }

@@ -15,13 +15,14 @@ export const addToCart = async (foodId, token) => {
 
     console.log("Adding to cart with userId:", userId, "foodId:", foodId);
     
-    await axiosInstance.post(
+    const response = await axiosInstance.post(
       "/api/cart",
       { foodId, userId },
       { headers: { Authorization: `Bearer ${token}` } }
     );
+    console.log("Add to cart response:", response.data);
   } catch (error) {
-    console.error("Error adding food:", error);
+    console.error("Error adding food:", error.response?.data || error.message);
     throw error;
   }
 };
