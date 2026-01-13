@@ -53,8 +53,23 @@ export const getCartData = async (token) => {
       headers: { Authorization: `Bearer ${token}` },
     });
 
+    // Handle both single cart object and array of carts (merging items if duplicates exist)
+    const data = response.data;
+    if (Array.isArray(data)) {
+      console.warn("Backend returned multiple cart documents. Merging items...");
+      const mergedItems = {};
+      data.forEach(cart => {
+        if (cart.items) {
+          Object.entries(cart.items).forEach(([prodId, qty]) => {
+            mergedItems[prodId] = (mergedItems[prodId] || 0) + qty;
+          });
+        }
+      });
+      return mergedItems;
+    }
+
     // backend returns CartResponse { items: { foodId: qty } }
-    return response.data?.items || {};
+    return data?.items || {};
   } catch (error) {
     console.error("Error while fetching cart data", error);
     return {};
