@@ -25,35 +25,34 @@ export const StoreContextProvider = ({ children }) => {
       return;
     }
 
-    // Prevent duplicate requests for the same ID until the current one finishes
-    if (addingToCart.current[id]) return;
-    addingToCart.current[id] = true;
-
-    // Update UI INSTANTLY
+    // 1. Update UI INSTANTLY for snappiness
     setQuantities((prev) => ({
       ...prev,
       [id]: (prev[id] || 0) + 1,
     }));
 
-    try {
-      await addToCart(id);
-    } catch (err) {
-      setQuantities((prev) => {
-        const updated = { ...prev };
-        if (updated[id] > 1) updated[id]--;
-        else delete updated[id];
-        return updated;
-      });
-    } finally {
-      addingToCart.current[id] = false;
+    // 2. Queue the backend request to prevent race conditions (duplicate carts)
+    // and to ensure every click is eventually processed in order.
+    if (!addingToCart.current[id]) {
+      addingToCart.current[id] = Promise.resolve();
     }
+
+    addingToCart.current[id] = addingToCart.current[id].then(async () => {
+      try {
+        await addToCart(id);
+      } catch (err) {
+        console.error("Cart increment failed:", err);
+        // On error, let the UI stay but try to refresh to latest server state
+        await loadCartData();
+      }
+    });
   };
 
   // ➖ Decrease quantity
   const decreaseQuantity = async (id) => {
-    if (!token || addingToCart.current[id]) return;
-    addingToCart.current[id] = true;
+    if (!token) return;
 
+    // 1. Update UI instantly
     setQuantities((prev) => {
       const updated = { ...prev };
       if (updated[id] <= 1) delete updated[id];
@@ -61,34 +60,44 @@ export const StoreContextProvider = ({ children }) => {
       return updated;
     });
 
-    try {
-      await removeQtyFromCart(id);
-    } catch (err) {
-      await loadCartData();
-    } finally {
-      addingToCart.current[id] = false;
+    // 2. Queue backend request
+    if (!addingToCart.current[id]) {
+      addingToCart.current[id] = Promise.resolve();
     }
+
+    addingToCart.current[id] = addingToCart.current[id].then(async () => {
+      try {
+        await removeQtyFromCart(id);
+      } catch (err) {
+        await loadCartData();
+      }
+    });
   };
 
   // 🗑️ Remove item completely
   const removeFromCart = async (foodId) => {
-    if (!token || addingToCart.current[foodId]) return;
-    addingToCart.current[foodId] = true;
+    if (!token) return;
 
+    // 1. Update UI instantly
     setQuantities((prev) => {
         const updated = { ...prev };
         delete updated[foodId];
         return updated;
     });
 
-    try {
-      await removeItemFromCart(foodId);
-    } catch (err) {
-      toast.error("Could not remove item.");
-      await loadCartData();
-    } finally {
-      addingToCart.current[foodId] = false;
+    // 2. Queue backend request
+    if (!addingToCart.current[foodId]) {
+      addingToCart.current[foodId] = Promise.resolve();
     }
+
+    addingToCart.current[foodId] = addingToCart.current[foodId].then(async () => {
+      try {
+        await removeItemFromCart(foodId);
+      } catch (err) {
+        toast.error("Could not remove item from server.");
+        await loadCartData();
+      }
+    });
   };
 
   // 🔄 Load cart from backend
