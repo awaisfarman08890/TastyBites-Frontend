@@ -54,11 +54,6 @@ const AboutUs = () => {
               Reach me at <a href="mailto:awaisfarman2222@gmail.com">awaisfarman2222@gmail.com</a>.
             </p>
           </div>
-
-          {/* Right Image */}
-          <div className="about-image-wrapper">
-            <img src={aboutImage} alt="Awais Farman" className="about-image" />
-          </div>
         </div>
       </div>
     </div>
